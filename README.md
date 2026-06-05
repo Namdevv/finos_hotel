@@ -12,7 +12,7 @@ Self-host trong mạng LAN. OCR dùng VLM (Qwen2.5-VL qua Ollama) chạy trên m
 |---|---|
 | Backend | FastAPI + SQLite (WAL) + worker nền (hàng đợi bằng bảng `jobs`, concurrency = 1) |
 | OCR | **VLM Qwen2.5-VL qua Ollama** — đọc tổng thể trang sổ (hiểu bảng kẻ cột, số khoanh tròn, chữ viết tay). Chạy ở Ollama trên máy có GPU; backend chỉ gọi HTTP |
-| Xử lý ảnh | Pillow: xoay ảnh về đúng chiều đọc (sổ chụp ngang) + thu nhỏ trước khi gửi VLM; nén ảnh phía client |
+| Xử lý ảnh | Gửi ảnh **gốc nguyên mẫu** cho VLM (không thu nhỏ/không nén). Chỉ xoay đúng chiều khi cần (sổ chụp ngang, `FINOS_OCR_ROTATE=90`; đặt 0 để giữ y hệt bytes gốc) |
 | Frontend | React + Vite + Tailwind, build tĩnh, **PWA** (cài như app, dùng camera) |
 | Auth | JWT + Argon2, phân quyền 3 vai trò |
 

@@ -94,10 +94,10 @@ export const api = {
   deleteTransaction: (id: number) =>
     request<void>(`/transactions/${id}`, { method: "DELETE" }),
 
-  // OCR
-  uploadImage: (file: Blob) => {
+  // OCR — gửi ảnh GỐC (không nén) để giữ toàn vẹn cho VLM.
+  uploadImage: (file: File) => {
     const fd = new FormData();
-    fd.append("file", file, "capture.jpg");
+    fd.append("file", file, file.name || "capture.jpg");
     return request<{ id: number; status: string }>("/ocr/upload", {
       method: "POST",
       body: fd,

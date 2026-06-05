@@ -39,22 +39,23 @@ mờ hay viết khó. Số ô khoanh tròn ở cột TỔNG TIỀN = số dòng 
 CHỈ trả về JSON: {"rows": [{"phong": "...", "tien": "..."}, ...]} theo thứ tự trên xuống."""
 
 
-def _image_to_b64(image_path: str, *, max_side: int, rotate: int) -> str:
-    """Đọc ảnh -> xoay về đúng chiều đọc -> thu nhỏ -> base64 JPEG.
+def _image_to_b64(image_path: str, *, rotate: int) -> str:
+    """Đưa ảnh vào VLM ở dạng NGUYÊN MẪU — giữ độ phân giải gốc, KHÔNG thu nhỏ.
 
-    rotate: độ NGƯỢC chiều kim đồng hồ (sổ chụp ngang thường cần 90).
+    - rotate == 0: gửi đúng bytes file gốc (toàn vẹn tuyệt đối, không đụng pixel).
+    - rotate != 0: chỉ xoay đúng chiều (bội số 90° = hoán vị pixel, không nội suy),
+      vẫn KHÔNG resize; lưu lại JPEG chất lượng cao (q95, 4:4:4) gần như không mất.
+      Muốn ảnh y hệt gốc thì đặt FINOS_OCR_ROTATE=0 và chụp thẳng.
     """
+    if not rotate:
+        with open(image_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+
     from PIL import Image
 
-    im = Image.open(image_path).convert("RGB")
-    if rotate:
-        im = im.rotate(rotate, expand=True)
-    w, h = im.size
-    if max(w, h) > max_side:
-        s = max_side / max(w, h)
-        im = im.resize((int(w * s), int(h * s)), Image.LANCZOS)
+    im = Image.open(image_path).convert("RGB").rotate(rotate, expand=True)
     buf = io.BytesIO()
-    im.save(buf, format="JPEG", quality=92)
+    im.save(buf, format="JPEG", quality=95, subsampling=0)
     return base64.b64encode(buf.getvalue()).decode()
 
 
@@ -114,7 +115,6 @@ def extract_rows(
         on_stage("preparing")
     b64 = _image_to_b64(
         image_path,
-        max_side=settings.ocr_max_side,
         rotate=settings.ocr_rotate if rotate is None else rotate,
     )
     if on_stage:
