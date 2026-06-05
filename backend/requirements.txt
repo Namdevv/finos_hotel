@@ -1,0 +1,21 @@
+# FinOS Hotel - Backend dependencies (tối ưu cho máy 4GB RAM, CPU-only)
+# Lưu ý: KHÔNG dùng torch/paddlepaddle. OCR chạy qua ONNX Runtime cho nhẹ RAM.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20        # nhận upload ảnh
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# Auth
+PyJWT==2.10.1                   # JWT bearer token (nhẹ hơn python-jose)
+argon2-cffi==23.1.0             # hash mật khẩu
+
+# OCR / xử lý ảnh (CPU, nhẹ)
+rapidocr-onnxruntime==1.4.4     # PaddleOCR PP-OCR chạy trên ONNX Runtime (không cần paddle/torch)
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+Pillow==11.0.0
+
+# Tiện ích
+psutil==6.1.1                   # đo RAM peak trong POC + giám sát runtime

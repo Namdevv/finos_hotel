@@ -1,0 +1,27 @@
+# Chạy trên máy đích trong LAN:
+#   1) Sao chép .env (từ backend/.env.example) và đổi FINOS_SECRET_KEY, mật khẩu admin.
+#   2) docker compose up -d --build
+#   3) Truy cập http://<IP-máy-này>:8000 từ điện thoại/máy khác cùng mạng.
+services:
+  finos:
+    build: .
+    image: finos-hotel:latest
+    container_name: finos-hotel
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env            # chứa FINOS_SECRET_KEY, FINOS_ADMIN_PASSWORD, ...
+    volumes:
+      - finos_data:/data   # DB + ảnh upload bền vững qua các lần rebuild
+    restart: unless-stopped
+    # Giới hạn RAM ~ máy 4GB (chừa cho OS). Bỏ nếu máy đích mạnh hơn.
+    mem_limit: 3g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  finos_data:

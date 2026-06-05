@@ -1,0 +1,46 @@
+# ───────────── Python / Backend ─────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Dữ liệu runtime — KHÔNG đẩy lên git
+*.db
+*.db-wal
+*.db-shm
+backend/uploads/
+data/
+
+# Secrets
+.env
+*.env
+!*.env.example
+
+# Kết quả/ảnh tạm của POC
+backend/poc/poc_result.json
+backend/poc/_sample.png
+backend/poc/*.jpg
+backend/poc/*.jpeg
+backend/poc/*.png
+
+# ───────────── Node / Frontend ─────────────
+node_modules/
+frontend/dist/
+frontend/dev-dist/
+*.local
+
+# Build artifacts do tsc -b sinh ra (vite.config.ts -> .js/.d.ts)
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# ───────────── Logs / OS / IDE ─────────────
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
