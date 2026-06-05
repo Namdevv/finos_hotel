@@ -1,108 +1,84 @@
-"""Pipeline OCR đầy đủ: ảnh -> các dòng chứng từ đề xuất (kèm confidence).
+"""Pipeline OCR: ảnh sổ -> các dòng chứng từ THU đề xuất (để người dùng duyệt).
 
-Lưu ý quan trọng: kết quả là ĐỀ XUẤT để người dùng duyệt/sửa, KHÔNG ghi thẳng
-vào sổ. Mỗi field có confidence để UI highlight chỗ cần kiểm.
+Dùng VLM (Ollama + Qwen2.5-VL, xem vlm.py) đọc tổng thể trang sổ, lấy:
+  - phòng (cột PHÒNG)
+  - tiền  (cột TỔNG TIỀN, số khoanh tròn) — quy ước nghìn (×1.000), luôn là THU
+  - ngày  = ngày upload (không đọc cột NGÀY trong ảnh)
+
+Kết quả là ĐỀ XUẤT để người dùng duyệt/sửa trên trang Review, KHÔNG ghi thẳng
+vào sổ kế toán.
 """
 from __future__ import annotations
 
-import statistics
-from dataclasses import asdict
+import datetime as dt
+import re
+from typing import Callable, Optional
 
-from .engine import Word, engine
-from .parse import (
-    extract_amount,
-    extract_date,
-    extract_room,
-    guess_kind,
-)
-from .preprocess import load_image, preprocess
+from .vlm import extract_rows
 
-
-def _group_rows(words: list[Word]) -> list[list[Word]]:
-    """Gom các word thành dòng dựa trên tâm y."""
-    if not words:
-        return []
-    heights = [w.y1 - w.y0 for w in words if w.y1 > w.y0]
-    line_gap = (statistics.median(heights) if heights else 20) * 0.7
-
-    rows: list[list[Word]] = []
-    for w in sorted(words, key=lambda x: x.cy):
-        if rows and abs(w.cy - statistics.mean([x.cy for x in rows[-1]])) <= line_gap:
-            rows[-1].append(w)
-        else:
-            rows.append([w])
-    return rows
+# Confidence gán cho field đọc được (VLM không trả điểm tin cậy riêng từng ô).
+# Field rỗng (đọc không ra) -> để 0.0 cho UI tô vàng "kiểm tra". Xem LOW_CONF (FE).
+_CONF_OK = 0.9
+_CONF_EMPTY = 0.0
 
 
-def _strip_spans(text: str, spans: list[tuple[int, int] | None]) -> str:
-    """Xóa các đoạn (date, amount) khỏi chuỗi để phần còn lại là phòng + nội dung."""
-    keep = [True] * len(text)
-    for span in spans:
-        if span:
-            for i in range(span[0], min(span[1], len(text))):
-                keep[i] = False
-    return "".join(c for c, k in zip(text, keep) if k)
+def _ledger_amount(token: str) -> int | None:
+    """Quy số tiền ghi trong sổ ra VND theo quy ước 'nghìn'.
 
-
-def _row_to_record(row: list[Word], *, default_kind: str = "income") -> dict | None:
-    """Biến một dòng (gồm 1+ box OCR) thành 1 bản ghi chứng từ đề xuất.
-
-    RapidOCR thường trả cả dòng là 1 box, nên ta GHÉP text theo thứ tự x rồi
-    parse field bằng regex trên cả chuỗi (không dựa vào tọa độ cột).
+    - '60'  -> 60.000      (số trần 1-3 chữ số = đơn vị nghìn)
+    - '180' -> 180.000
+    - '100' -> 100.000
+    - '1.200.000' / '180000' -> giữ nguyên (đã ghi đủ số đồng)
     """
-    row = sorted(row, key=lambda w: w.cx)
-    line_text = " ".join(w.text for w in row).strip()
-    if not line_text:
+    s = str(token).strip().lower()
+    digits = re.sub(r"\D", "", s)
+    if not digits or int(digits) == 0:
         return None
+    # Có dấu phân tách ngàn -> coi như đã ghi đủ số đồng.
+    if re.search(r"\d[.,]\d{3}", s):
+        return int(re.sub(r"\D", "", s))
+    n = int(digits)
+    # Số trần ngắn (<=3 chữ số) hiểu theo đơn vị nghìn.
+    return n * 1000 if len(digits) <= 3 else n
 
-    # Confidence của dòng = nhỏ nhất trong các box góp mặt (thận trọng).
-    row_conf = round(min(w.confidence for w in row), 3)
 
-    date_val, date_span = extract_date(line_text)
-    amount_val, amount_span = extract_amount(line_text)
-
-    # Bỏ dòng không có tiền -> nhiều khả năng là tiêu đề/ghi chú/nhiễu.
-    if amount_val is None:
-        return None
-
-    remainder = _strip_spans(line_text, [date_span, amount_span])
-    room = extract_room(remainder)
-    note = " ".join(remainder.replace(room, " ", 1).split()).strip() if room else " ".join(remainder.split())
-
-    kind = guess_kind(line_text) or default_kind
-
-    record = {
-        "txn_date": {"value": date_val or "", "confidence": row_conf},
-        "room": {"value": room, "confidence": row_conf},
-        "note": {"value": note, "confidence": row_conf},
-        "kind": kind,
-        "amount": {"value": str(amount_val), "confidence": row_conf},
-        "min_confidence": row_conf,
+def _to_record(raw: dict, *, today_iso: str) -> dict | None:
+    """Biến 1 mục {phong, tien} từ VLM thành bản ghi THU đề xuất (shape OcrRow)."""
+    amount = _ledger_amount(raw.get("tien", ""))
+    if amount is None:
+        return None  # không có tiền -> bỏ (tiêu đề/nhiễu)
+    room = re.sub(r"\D", "", str(raw.get("phong", "")))
+    room_conf = _CONF_OK if room else _CONF_EMPTY
+    return {
+        "txn_date": {"value": today_iso, "confidence": 1.0},  # ngày upload, chắc chắn
+        "room": {"value": room, "confidence": room_conf},
+        "note": {"value": "", "confidence": 1.0},
+        "kind": "income",
+        "amount": {"value": str(amount), "confidence": _CONF_OK},
+        "min_confidence": round(min(room_conf, _CONF_OK), 3),
     }
-    return record
 
 
-def run_ocr(image_path: str) -> dict:
-    """Chạy toàn bộ pipeline trên 1 ảnh.
-
-    Trả về dict gồm:
+def run_ocr(
+    image_path: str,
+    *,
+    on_stage: Optional[Callable[[str], None]] = None,
+    rotate: Optional[int] = None,
+    should_cancel: Optional[Callable[[], bool]] = None,
+) -> dict:
+    """Chạy VLM trên 1 ảnh, trả:
       - rows: danh sách bản ghi đề xuất (cho người dùng duyệt)
-      - raw: text OCR thô + bbox (để truy vết)
+      - raw : chuỗi JSON gốc model trả về (để truy vết khi sai)
+
+    on_stage(stage): callback báo giai đoạn ('preparing'|'recognizing'|'parsing')
+    để UI theo dõi tiến trình. rotate: góc xoay riêng cho lần chạy (re-OCR).
+    should_cancel(): trả True để ngắt giữa chừng (ném OcrCancelled).
     """
-    img = load_image(image_path)
-    img = preprocess(img)
-    words: list[Word] = engine.recognize(img)
-
-    raw = [
-        {"text": w.text, "confidence": round(w.confidence, 3),
-         "box": [round(w.x0), round(w.y0), round(w.x1), round(w.y1)]}
-        for w in words
-    ]
-
-    rows: list[dict] = []
-    for group in _group_rows(words):
-        rec = _row_to_record(group)
-        if rec is not None:
-            rows.append(rec)
-
-    return {"rows": rows, "raw": raw}
+    items, raw_response = extract_rows(
+        image_path, on_stage=on_stage, rotate=rotate, should_cancel=should_cancel
+    )
+    if on_stage:
+        on_stage("parsing")
+    today_iso = dt.date.today().isoformat()
+    rows = [r for r in (_to_record(it, today_iso=today_iso) for it in items) if r]
+    return {"rows": rows, "raw": raw_response}

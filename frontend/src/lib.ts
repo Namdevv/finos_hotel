@@ -12,14 +12,17 @@ export function parseVnd(s: string): number {
 }
 
 /**
- * Nén & resize ảnh phía client TRƯỚC khi upload.
- * Mục tiêu: giảm RAM/băng thông cho server 4GB. Cạnh dài tối đa ~2000px,
- * xuất JPEG chất lượng 0.85.
+ * Resize nhẹ ảnh phía client TRƯỚC khi upload — chỉ để chặn ảnh quá khổ.
+ *
+ * QUAN TRỌNG cho chất lượng OCR: KHÔNG bóp quá tay ở đây, vì server (vlm.py)
+ * mới là nơi resize/encode cuối cùng đưa vào VLM (FINOS_OCR_MAX_SIDE, q92).
+ * Gửi rộng & nét hơn server target để server tự hạ về mức chuẩn → giữ nét chữ
+ * viết tay. Cạnh dài tối đa ~3000px, JPEG chất lượng 0.92.
  */
 export async function compressImage(
   file: File,
-  maxSide = 2000,
-  quality = 0.85,
+  maxSide = 3000,
+  quality = 0.92,
 ): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   let { width, height } = bitmap;

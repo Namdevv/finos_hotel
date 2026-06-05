@@ -14,8 +14,10 @@ services:
     volumes:
       - finos_data:/data   # DB + ảnh upload bền vững qua các lần rebuild
     restart: unless-stopped
-    # Giới hạn RAM ~ máy 4GB (chừa cho OS). Bỏ nếu máy đích mạnh hơn.
-    mem_limit: 3g
+    # Cho phép container gọi Ollama chạy trên máy chủ (FINOS_OLLAMA_HOST=host.docker.internal).
+    # Trên Linux cần dòng này; Docker Desktop (Win/Mac) đã có sẵn host.docker.internal.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)"]
       interval: 30s

@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     image_path   TEXT NOT NULL,
     status       TEXT NOT NULL DEFAULT 'queued'
                  CHECK (status IN ('queued', 'processing', 'done', 'failed')),
+    stage        TEXT,        -- giai đoạn xử lý hiện tại (preparing|recognizing|parsing) để UI theo dõi
+    rotate       INTEGER,     -- góc xoay ảnh riêng cho job (re-OCR); NULL = dùng mặc định FINOS_OCR_ROTATE
+    cancelled    INTEGER NOT NULL DEFAULT 0,  -- người dùng đã yêu cầu ngưng job
     error        TEXT,
     result_json  TEXT,        -- kết quả OCR đã parse (các dòng + field + confidence)
     raw_ocr_json TEXT,        -- text OCR thô + bbox để truy vết

@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 # ─────────────────────────────────────────────────────────────
 # FinOS Hotel — build 1 image, chạy được trên máy khác (LAN).
-# Build frontend (Node) -> gộp vào backend (Python + OCR ONNX).
-# Model PP-OCRv4 đã đóng gói sẵn trong rapidocr-onnxruntime => chạy offline.
+# Build frontend (Node) -> gộp vào backend (Python, nhẹ).
+# OCR do Ollama (VLM) đảm nhiệm ở máy có GPU — container chỉ gọi HTTP.
 # ─────────────────────────────────────────────────────────────
 
 # ===== Stage 1: build frontend tĩnh =====
@@ -16,10 +16,8 @@ RUN npm run build      # xuất ra /fe/dist
 # ===== Stage 2: backend + phục vụ frontend =====
 FROM python:3.12-slim AS runtime
 
-# opencv-python-headless cần libglib2.0-0; libgomp1 cho onnxruntime.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libglib2.0-0 libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+# OCR chạy ở Ollama (ngoài container) -> backend thuần Python + Pillow,
+# không cần thư viện hệ thống nặng (opencv/onnxruntime đã bỏ).
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONUTF8=1 \

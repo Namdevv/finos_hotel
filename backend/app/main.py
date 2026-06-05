@@ -44,7 +44,10 @@ app.include_router(stats.router)
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "ocr_loaded": worker is not None}
+    from .config import get_settings
+
+    s = get_settings()
+    return {"status": "ok", "ocr_backend": "ollama", "ocr_model": s.ocr_model}
 
 
 # --- Phục vụ frontend đã build (SPA). Đặt SAU các route /api. ---

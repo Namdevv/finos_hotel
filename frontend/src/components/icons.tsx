@@ -121,3 +121,16 @@ export const IconSpark = (p: P) => (
     <path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3Z" />
   </svg>
 );
+
+export const IconHistory = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5M12 7v5l4 2" />
+  </svg>
+);
+
+export const IconRefresh = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6" />
+  </svg>
+);

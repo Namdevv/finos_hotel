@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Review from "./pages/Review";
 import Transactions from "./pages/Transactions";
+import Uploads from "./pages/Uploads";
 import Users from "./pages/Users";
 import "./index.css";
 
@@ -42,6 +43,7 @@ createRoot(document.getElementById("root")!).render(
           >
             <Route path="/" element={<Home />} />
             <Route path="/capture" element={<Capture />} />
+            <Route path="/uploads" element={<Uploads />} />
             <Route path="/review/:jobId" element={<Review />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route

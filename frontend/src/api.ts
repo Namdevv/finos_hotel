@@ -1,5 +1,6 @@
 import type {
   Job,
+  JobSummary,
   StatsBucket,
   StatsSummary,
   Transaction,
@@ -103,6 +104,16 @@ export const api = {
     });
   },
   getJob: (id: number) => request<Job>(`/ocr/jobs/${id}`),
+  listJobs: () => request<JobSummary[]>("/ocr/jobs"),
+  reocr: (id: number, rotate: number | null) =>
+    request<Job>(`/ocr/jobs/${id}/reocr`, {
+      method: "POST",
+      body: JSON.stringify({ rotate }),
+    }),
+  cancelJob: (id: number) =>
+    request<void>(`/ocr/jobs/${id}/cancel`, { method: "POST" }),
+  deleteJob: (id: number) =>
+    request<void>(`/ocr/jobs/${id}`, { method: "DELETE" }),
 
   // Stats
   summary: (params: Record<string, string> = {}) => {

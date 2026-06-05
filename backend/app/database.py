@@ -43,6 +43,17 @@ def init_db() -> None:
         conn.executescript(SCHEMA_FILE.read_text(encoding="utf-8"))
         conn.commit()
 
+        # Migration nhẹ: thêm cột mới cho DB tạo từ phiên bản cũ (CREATE TABLE
+        # IF NOT EXISTS không thêm cột). An toàn để chạy mỗi lần khởi động.
+        job_cols = {r["name"] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()}
+        if "stage" not in job_cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN stage TEXT")
+        if "rotate" not in job_cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN rotate INTEGER")
+        if "cancelled" not in job_cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN cancelled INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+
         count = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
         if count == 0:
             conn.execute(
