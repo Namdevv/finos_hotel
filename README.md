@@ -18,6 +18,8 @@ Tối ưu cho máy yếu (4GB RAM, CPU-only), self-host trong mạng LAN.
 
 **Vai trò:** `admin` (toàn quyền + quản user + báo cáo) · `accountant` (nhập/duyệt + báo cáo) · `receptionist` (chụp & tạo chứng từ, không xem báo cáo tổng, không xóa).
 
+**Giao diện:** bảng màu & design tokens xem [COLORS.md](COLORS.md) — tham khảo file này khi làm UI mới để giữ đồng bộ.
+
 ## Cấu trúc thư mục
 
 ```
