@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, getToken } from "../api";
-import { Badge, Button, Card, Spinner } from "../components/ui";
+import { Button, Card, Spinner } from "../components/ui";
+import { IconAlert, IconCheck, IconPlus, IconTrash } from "../components/icons";
 import { LOW_CONF, fmtVnd, parseVnd } from "../lib";
 import type { Job, Kind, OcrRow } from "../types";
 
@@ -37,7 +38,6 @@ export default function Review() {
   const [error, setError] = useState("");
   const polling = useRef<number | null>(null);
 
-  // Poll job đến khi xong.
   useEffect(() => {
     const id = Number(jobId);
     async function tick() {
@@ -62,7 +62,6 @@ export default function Review() {
     };
   }, [jobId]);
 
-  // Ảnh gốc cần token -> tải blob rồi tạo objectURL.
   async function loadImage(id: number) {
     const res = await fetch(`/api/ocr/image/${id}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
@@ -108,7 +107,10 @@ export default function Review() {
   if (error)
     return (
       <Card className="mx-auto max-w-lg">
-        <div className="text-red-600">{error}</div>
+        <div className="flex items-center gap-2 text-rose-600">
+          <IconAlert className="h-5 w-5" />
+          {error}
+        </div>
         <Button variant="secondary" className="mt-4" onClick={() => nav("/capture")}>
           Thử lại
         </Button>
@@ -119,18 +121,21 @@ export default function Review() {
     return <Spinner label={job?.status === "processing" ? "Đang nhận dạng…" : "Đang chờ xử lý…"} />;
 
   const total = rows.reduce((s, r) => s + parseVnd(r.amount) * (r.kind === "expense" ? -1 : 1), 0);
+  const lowCount = rows.filter((r) => Math.min(r.conf.date, r.conf.room, r.conf.amount) < LOW_CONF).length;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">Duyệt & sửa</h1>
-        <Badge color="amber">Hãy kiểm tra ô được tô vàng</Badge>
-      </div>
+      {lowCount > 0 && (
+        <Card className="flex items-center gap-2 border-amber-200 bg-amber-50/60 !py-3 text-sm text-amber-700">
+          <IconAlert className="h-4 w-4 shrink-0" />
+          Có ô độ tin cậy thấp được tô vàng — hãy kiểm tra kỹ trước khi lưu.
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="lg:sticky lg:top-4 lg:self-start">
+        <Card pad={false} className="overflow-hidden lg:sticky lg:top-20 lg:self-start">
           {imgUrl ? (
-            <img src={imgUrl} alt="sổ" className="max-h-[70vh] w-full rounded-xl object-contain" />
+            <img src={imgUrl} alt="Ảnh sổ gốc" className="max-h-[72vh] w-full object-contain" />
           ) : (
             <Spinner />
           )}
@@ -140,31 +145,30 @@ export default function Review() {
           {rows.map((r, i) => (
             <Card key={i} className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-400">Dòng {i + 1}</span>
-                <button onClick={() => removeRow(i)} className="text-xs text-red-500 hover:underline">
-                  Xóa
+                <span className="text-xs font-bold text-slate-400">DÒNG {i + 1}</span>
+                <button
+                  onClick={() => removeRow(i)}
+                  className="cursor-pointer rounded-md p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                  title="Xóa dòng"
+                >
+                  <IconTrash className="h-4 w-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <Field label="Ngày" low={r.conf.date < LOW_CONF}>
                   <input type="date" value={r.txn_date} onChange={(e) => update(i, { txn_date: e.target.value })} className="field" />
                 </Field>
                 <Field label="Loại">
-                  <select value={r.kind} onChange={(e) => update(i, { kind: e.target.value as Kind })} className="field">
+                  <select value={r.kind} onChange={(e) => update(i, { kind: e.target.value as Kind })} className="field cursor-pointer">
                     <option value="income">Thu</option>
                     <option value="expense">Chi</option>
                   </select>
                 </Field>
-                <Field label="Phòng/khách" low={r.conf.room < LOW_CONF}>
+                <Field label="Phòng / khách" low={r.conf.room < LOW_CONF}>
                   <input value={r.room} onChange={(e) => update(i, { room: e.target.value })} className="field" />
                 </Field>
                 <Field label="Số tiền" low={r.conf.amount < LOW_CONF}>
-                  <input
-                    inputMode="numeric"
-                    value={r.amount}
-                    onChange={(e) => update(i, { amount: e.target.value })}
-                    className="field"
-                  />
+                  <input inputMode="numeric" value={r.amount} onChange={(e) => update(i, { amount: e.target.value })} className="field num" />
                 </Field>
                 <Field label="Nội dung" full>
                   <input value={r.note} onChange={(e) => update(i, { note: e.target.value })} className="field" />
@@ -174,22 +178,27 @@ export default function Review() {
           ))}
 
           <Button variant="secondary" onClick={addRow} className="w-full">
-            + Thêm dòng
+            <IconPlus className="h-4 w-4" />
+            Thêm dòng
           </Button>
         </div>
       </div>
 
-      <Card className="sticky bottom-20 flex items-center justify-between md:bottom-4">
-        <div>
-          <div className="text-xs text-slate-400">Chênh lệch ({rows.length} dòng)</div>
-          <div className={`text-lg font-bold ${total < 0 ? "text-red-600" : "text-emerald-600"}`}>
-            {fmtVnd(total)}
+      {/* Thanh lưu cố định */}
+      <div className="sticky bottom-20 z-10 md:bottom-4">
+        <Card className="flex items-center justify-between !py-3 shadow-pop">
+          <div>
+            <div className="text-xs text-slate-400">Chênh lệch · {rows.length} dòng</div>
+            <div className={`text-lg font-bold tabular-nums ${total < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+              {fmtVnd(total)}
+            </div>
           </div>
-        </div>
-        <Button onClick={saveAll} disabled={saving || rows.length === 0}>
-          {saving ? "Đang lưu…" : "Lưu tất cả"}
-        </Button>
-      </Card>
+          <Button onClick={saveAll} disabled={saving || rows.length === 0}>
+            <IconCheck className="h-4 w-4" />
+            {saving ? "Đang lưu…" : "Lưu tất cả"}
+          </Button>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -209,9 +218,13 @@ function Field({
     <label className={`block ${full ? "col-span-2" : ""}`}>
       <span className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
         {label}
-        {low && <span className="text-amber-500">⚠ kiểm tra</span>}
+        {low && (
+          <span className="inline-flex items-center gap-0.5 text-amber-600">
+            <IconAlert className="h-3 w-3" /> kiểm tra
+          </span>
+        )}
       </span>
-      <div className={low ? "rounded-xl ring-2 ring-amber-300" : ""}>{children}</div>
+      <div className={low ? "rounded-lg ring-2 ring-amber-300" : ""}>{children}</div>
     </label>
   );
 }

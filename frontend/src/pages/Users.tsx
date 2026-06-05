@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { Badge, Button, Card, Input, Spinner } from "../components/ui";
+import { IconPlus, IconTrash } from "../components/icons";
 import { ROLE_LABEL, type Role, type User } from "../types";
 
 const ROLES: Role[] = ["admin", "accountant", "receptionist"];
@@ -47,19 +48,20 @@ export default function Users() {
     }
   }
 
-  return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-800">Người dùng</h1>
+  const initials = (u: User) => (u.full_name || u.username).trim().charAt(0).toUpperCase();
 
-      <Card>
-        <div className="mb-3 text-sm font-semibold text-slate-600">Thêm người dùng</div>
-        <form onSubmit={create} className="grid gap-3 sm:grid-cols-2">
+  return (
+    <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
+      {/* Form thêm */}
+      <Card className="h-fit">
+        <h2 className="mb-4 text-sm font-bold text-slate-800">Thêm người dùng</h2>
+        <form onSubmit={create} className="space-y-3">
           <Input label="Tên đăng nhập" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
           <Input label="Họ tên" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
           <Input label="Mật khẩu" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-600">Vai trò</span>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })} className="field">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Vai trò</span>
+            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })} className="field cursor-pointer">
               {ROLES.map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABEL[r]}
@@ -67,40 +69,59 @@ export default function Users() {
               ))}
             </select>
           </label>
-          {error && <div className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
-          <div className="sm:col-span-2">
-            <Button type="submit" disabled={busy}>
-              {busy ? "Đang tạo…" : "Tạo người dùng"}
-            </Button>
-          </div>
+          {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 ring-1 ring-rose-200">{error}</div>}
+          <Button type="submit" disabled={busy} className="w-full">
+            <IconPlus className="h-4 w-4" />
+            {busy ? "Đang tạo…" : "Tạo người dùng"}
+          </Button>
         </form>
       </Card>
 
+      {/* Danh sách */}
       {users === null ? (
         <Spinner />
       ) : (
-        <div className="space-y-2">
-          {users.map((u) => (
-            <Card key={u.id} className="flex items-center justify-between gap-3 py-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-slate-700">{u.full_name || u.username}</span>
-                  <Badge color="blue">{ROLE_LABEL[u.role]}</Badge>
-                  {!u.is_active && <Badge color="red">Khóa</Badge>}
-                </div>
-                <div className="text-xs text-slate-400">@{u.username}</div>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                <button onClick={() => toggleActive(u)} className="text-slate-500 hover:underline">
-                  {u.is_active ? "Khóa" : "Mở khóa"}
-                </button>
-                <button onClick={() => del(u)} className="text-red-500 hover:underline">
-                  Xóa
-                </button>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <Card pad={false} className="overflow-hidden">
+          <table className="acc-table">
+            <thead>
+              <tr>
+                <th>Người dùng</th>
+                <th>Vai trò</th>
+                <th>Trạng thái</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                        {initials(u)}
+                      </div>
+                      <div>
+                        <div className="font-medium text-slate-800">{u.full_name || u.username}</div>
+                        <div className="text-xs text-slate-400">@{u.username}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><Badge color="blue">{ROLE_LABEL[u.role]}</Badge></td>
+                  <td>{u.is_active ? <Badge color="green">Hoạt động</Badge> : <Badge color="red">Đã khóa</Badge>}</td>
+                  <td className="num">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => toggleActive(u)} className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100">
+                        {u.is_active ? "Khóa" : "Mở khóa"}
+                      </button>
+                      <button onClick={() => del(u)} title="Xóa" className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                        <IconTrash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
       )}
     </div>
   );

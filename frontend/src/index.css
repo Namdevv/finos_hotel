@@ -1,12 +1,8 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@layer components {
-  .field {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
-  }
-}
 
 html,
 body,
@@ -16,8 +12,42 @@ body,
 
 body {
   @apply bg-slate-100 text-slate-800 antialiased;
-  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
-  /* Tôn trọng vùng an toàn trên mobile (tai thỏ, thanh điều hướng). */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font-feature-settings: "tnum" 1; /* số canh đều - hợp bảng kế toán */
+}
+
+@layer components {
+  /* Ô nhập liệu chuẩn */
+  .field {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800
+      outline-none transition-colors placeholder:text-slate-400
+      focus:border-brand-500 focus:ring-2 focus:ring-brand-100
+      disabled:cursor-not-allowed disabled:bg-slate-50;
+  }
+
+  /* Bảng số liệu dày kiểu phần mềm kế toán */
+  .acc-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .acc-table thead th {
+    @apply sticky top-0 z-[1] whitespace-nowrap border-b border-slate-200 bg-slate-50 px-3 py-2.5
+      text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .acc-table tbody td {
+    @apply border-b border-slate-100 px-3 py-2.5 align-middle text-slate-700;
+  }
+  .acc-table tbody tr {
+    @apply transition-colors hover:bg-brand-50/40;
+  }
+  /* Cột số tiền canh phải, dùng số dạng tabular */
+  .num {
+    @apply text-right tabular-nums;
+  }
+}
+
+/* Tôn trọng người dùng tắt hiệu ứng chuyển động */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
