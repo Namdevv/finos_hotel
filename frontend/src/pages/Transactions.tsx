@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { Badge, Button, Card, Spinner } from "../components/ui";
-import { IconArrowDown, IconArrowUp, IconFilter, IconTrash } from "../components/icons";
+import { Badge, Button, Card, Modal, Spinner } from "../components/ui";
+import { IconArrowDown, IconArrowUp, IconFilter, IconPlus, IconTrash } from "../components/icons";
+import TransactionForm from "../components/TransactionForm";
 import { fmtVnd } from "../lib";
 import type { Transaction } from "../types";
 
@@ -13,6 +14,7 @@ export default function Transactions() {
   const [kind, setKind] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [adding, setAdding] = useState(false);
 
   async function load() {
     setItems(null);
@@ -38,6 +40,25 @@ export default function Transactions() {
 
   return (
     <div className="space-y-4">
+      {/* Hành động */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">Danh sách thu / chi đã lưu</p>
+        <Button onClick={() => setAdding(true)}>
+          <IconPlus className="h-4 w-4" />
+          Thêm chứng từ
+        </Button>
+      </div>
+
+      {/* Modal nhập tay */}
+      <Modal open={adding} onClose={() => setAdding(false)} title="Thêm chứng từ thủ công">
+        <TransactionForm
+          onSaved={() => {
+            setAdding(false);
+            load();
+          }}
+        />
+      </Modal>
+
       {/* Thanh lọc */}
       <Card className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
