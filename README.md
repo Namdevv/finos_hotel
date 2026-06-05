@@ -76,6 +76,18 @@ $env:PYTHONUTF8=1; ./.venv/Scripts/python.exe -m tests.smoke_test
 ./.venv/Scripts/python.exe -m tests.ocr_integration_test
 ```
 
+### Nạp dữ liệu DEMO để xem UI
+
+```powershell
+cd backend
+# Nạp 22 giao dịch + 3 user mẫu vào DB demo riêng (không đụng dữ liệu thật)
+$env:FINOS_DB_PATH="demo.db"; $env:FINOS_UPLOAD_DIR="demo_uploads"; $env:PYTHONUTF8=1
+./.venv/Scripts/python.exe -m tests.seed_demo
+# Chạy thử với DB demo
+./.venv/Scripts/python.exe -m uvicorn app.main:app --port 8011
+```
+Đăng nhập: `admin/admin123`, `ketoan/ketoan123`, `letan/letan123`.
+
 ## POC OCR — cổng quyết định (chạy trên máy sẽ deploy)
 
 Trước khi tin tưởng OCR, hãy đo trên **ảnh sổ thật**:
