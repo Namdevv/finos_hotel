@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon.svg", "logo_finos.png"],
       manifest: {
         name: "FinOS Hotel — Kế toán khách sạn",
         short_name: "FinOS Hotel",

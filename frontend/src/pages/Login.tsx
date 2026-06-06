@@ -31,9 +31,7 @@ export default function Login() {
       {/* Bảng thương hiệu (desktop) */}
       <div className="relative hidden w-1/2 flex-col justify-between bg-ink-900 p-12 text-white lg:flex">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-lg font-extrabold">
-            F
-          </div>
+          <img src="/logo_finos.png" alt="FinOS Hotel" className="h-10 w-10 rounded-xl object-cover" />
           <span className="text-lg font-bold">FinOS Hotel</span>
         </div>
         <div>
@@ -64,9 +62,11 @@ export default function Login() {
       <div className="flex w-full items-center justify-center bg-slate-100 p-6 lg:w-1/2">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center lg:hidden">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-xl font-extrabold text-white">
-              F
-            </div>
+            <img
+              src="/logo_finos.png"
+              alt="FinOS Hotel"
+              className="mx-auto mb-3 h-12 w-12 rounded-xl object-cover"
+            />
             <div className="text-xl font-bold text-slate-900">FinOS Hotel</div>
           </div>
 

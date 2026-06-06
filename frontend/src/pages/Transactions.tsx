@@ -142,16 +142,30 @@ export default function Transactions() {
       </Modal>
 
       {/* Thanh lọc */}
-      <Card className="flex flex-wrap items-end gap-3">
+      <Card className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
         <label className="text-sm">
           <span className="mb-1 block text-xs font-medium text-slate-500">Từ ngày</span>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="field" />
+          <div className="relative">
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="field" />
+            {!from && (
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">
+                dd/mm/yyyy
+              </span>
+            )}
+          </div>
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs font-medium text-slate-500">Đến ngày</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="field" />
+          <div className="relative">
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="field" />
+            {!to && (
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">
+                dd/mm/yyyy
+              </span>
+            )}
+          </div>
         </label>
-        <label className="text-sm">
+        <label className="col-span-2 text-sm sm:col-span-1">
           <span className="mb-1 block text-xs font-medium text-slate-500">Loại</span>
           <select value={kind} onChange={(e) => setKind(e.target.value)} className="field cursor-pointer">
             <option value="">Tất cả</option>
@@ -159,7 +173,7 @@ export default function Transactions() {
             <option value="expense">Chi</option>
           </select>
         </label>
-        <Button onClick={load}>
+        <Button onClick={load} className="col-span-2 sm:col-span-1">
           <IconFilter className="h-4 w-4" />
           Lọc
         </Button>

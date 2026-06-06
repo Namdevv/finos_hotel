@@ -24,6 +24,25 @@ body {
       disabled:cursor-not-allowed disabled:bg-slate-50;
   }
 
+  /* iOS Safari bỏ qua width:100% trên input[type=date]/[time] và dùng
+     chiều rộng nội tại -> tràn/đè ô bên cạnh trong grid. -webkit-appearance:none
+     ép input tôn trọng width. Chỉ áp cho thiết bị cảm ứng (iOS/Android) để
+     KHÔNG làm mất nút mở lịch trên Chrome/desktop. */
+  @media (pointer: coarse) {
+    input[type="date"].field,
+    input[type="time"].field {
+      -webkit-appearance: none;
+      appearance: none;
+      /* appearance:none làm date input thấp/dẹp trên iOS -> ép cao bằng
+         các field khác (.field ~ 2.375rem: text-sm 20px + py-2 16px + viền 2px) */
+      min-height: 2.375rem;
+    }
+    input[type="date"].field::-webkit-date-and-time-value {
+      text-align: left;
+      margin: 0;
+    }
+  }
+
   /* Bảng số liệu dày kiểu phần mềm kế toán */
   .acc-table {
     @apply w-full border-collapse text-sm;
