@@ -19,6 +19,9 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "on",
+    launchOptions: {
+      slowMo: Number(process.env.PLAYWRIGHT_SLOW_MO ?? 120),
+    },
   },
   projects: [
     {

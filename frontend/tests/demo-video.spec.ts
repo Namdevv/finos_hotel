@@ -220,7 +220,7 @@ function ocrRow(
   };
 }
 
-async function pause(page: Page, ms = 500) {
+async function pause(page: Page, ms = 900) {
   await page.waitForTimeout(ms);
 }
 
@@ -233,19 +233,19 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
 
   await page.getByLabel("Tên đăng nhập").fill("admin");
   await page.getByLabel("Mật khẩu").fill("admin123");
-  await pause(page, 350);
+  await pause(page, 700);
   await page.getByRole("button", { name: /Đăng nhập/ }).click();
 
   await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
   await expect(page.getByText("Số liệu tháng này")).toBeVisible();
-  await pause(page, 900);
+  await pause(page, 1_500);
 
   await page.getByRole("combobox").selectOption("month");
-  await pause(page, 700);
+  await pause(page, 1_200);
 
   await page.getByRole("link", { name: /Chụp sổ/ }).click();
   await expect(page.getByRole("heading", { name: "Chụp / tải ảnh sổ" })).toBeVisible();
-  await pause(page, 500);
+  await pause(page, 1_000);
 
   const chooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: /Từ album/ }).click();
@@ -253,9 +253,9 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
   await chooser.setFiles(fixturePath);
 
   await expect(page.getByAltText("Xem trước ảnh sổ")).toBeVisible();
-  await pause(page, 700);
+  await pause(page, 1_300);
   await page.getByRole("button", { name: /Xoay 90/ }).click();
-  await pause(page, 500);
+  await pause(page, 900);
   await page.getByRole("button", { name: /OCR & duyệt/ }).click();
 
   await expect(page.getByRole("heading", { name: "Đang xử lý ảnh sổ" })).toBeVisible();
@@ -264,38 +264,38 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
 
   await expect(page.getByText("Duyệt lại từng dòng trước khi lưu.")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByAltText("Ảnh sổ gốc")).toBeVisible();
-  await pause(page, 900);
+  await pause(page, 1_600);
 
   await page.getByLabel("Phòng / khách").first().fill("P203 - Anh Nam");
   await page.getByLabel("Nội dung").first().fill("Tiền phòng 2 đêm");
   await page.getByLabel(/Số tiền/).first().fill("1250000");
-  await pause(page, 500);
+  await pause(page, 1_000);
 
   await page.getByTitle("Xóa dòng").nth(2).click();
-  await pause(page, 450);
+  await pause(page, 900);
   await page.getByRole("button", { name: /Thêm dòng/ }).click();
-  await pause(page, 450);
+  await pause(page, 900);
 
   await page.getByLabel("Loại").last().selectOption("expense");
   await page.getByLabel("Phòng / khách").last().fill("P305");
   await page.getByLabel("Nội dung").last().fill("Phụ thu giặt là");
   await page.getByLabel(/Số tiền/).last().fill("120000");
-  await pause(page, 600);
+  await pause(page, 1_200);
 
   await page.getByRole("button", { name: /Lưu tất cả/ }).click();
 
   await expect(page.getByRole("heading", { name: "Chứng từ" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "P203 - Anh Nam" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Phụ thu giặt là" })).toBeVisible();
-  await pause(page, 800);
+  await pause(page, 1_500);
 
   await page.getByLabel("Loại").selectOption("expense");
   await page.getByRole("button", { name: /Lọc/ }).click();
   await expect(page.getByRole("cell", { name: /Phụ thu giặt là/ })).toBeVisible();
-  await pause(page, 900);
+  await pause(page, 1_500);
 
   await page.getByRole("link", { name: /Tổng quan/ }).click();
   await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
   await expect(page.getByText("Thu / Chi theo ngày")).toBeVisible();
-  await pause(page, 1_200);
+  await pause(page, 2_000);
 });
