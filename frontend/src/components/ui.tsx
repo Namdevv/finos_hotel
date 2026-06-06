@@ -36,11 +36,11 @@ export function Input({
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label?: string; hint?: string }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       {label && (
         <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
       )}
-      <input className={`field ${className}`} {...props} />
+      <input className={`field min-w-0 ${className}`} {...props} />
       {hint && <span className="mt-1 block text-xs text-slate-400">{hint}</span>}
     </label>
   );
