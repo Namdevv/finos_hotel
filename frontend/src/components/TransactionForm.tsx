@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { Button, Input } from "./ui";
 import { IconArrowDown, IconArrowUp } from "./icons";
-import { fmtVnd, parseVnd } from "../lib";
+import { fmtVnd, fmtVndInput, parseVnd } from "../lib";
 import type { Kind, Transaction } from "../types";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -23,7 +23,7 @@ export default function TransactionForm({
   const [kind, setKind] = useState<Kind>(transaction?.kind || "income");
   const [room, setRoom] = useState(transaction?.room || "");
   const [note, setNote] = useState(transaction?.note || "");
-  const [amount, setAmount] = useState(transaction ? String(transaction.amount) : "");
+  const [amount, setAmount] = useState(transaction ? fmtVndInput(String(transaction.amount)) : "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -102,7 +102,7 @@ export default function TransactionForm({
         label="Số tiền (VND)"
         inputMode="numeric"
         value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        onChange={(e) => setAmount(fmtVndInput(e.target.value))}
         placeholder="0"
         className="num text-base font-semibold"
         hint={amountNum > 0 ? `= ${fmtVnd(amountNum)}` : "Nhập số tiền"}

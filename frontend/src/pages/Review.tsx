@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, getToken } from "../api";
 import { Button, Card, Modal, Spinner } from "../components/ui";
 import { IconAlert, IconCheck, IconPlus, IconRefresh, IconTrash } from "../components/icons";
-import { LOW_CONF, fmtVnd, parseVnd } from "../lib";
+import { LOW_CONF, fmtVnd, fmtVndInput, parseVnd } from "../lib";
 import type { Job, JobStage, Kind, OcrRow } from "../types";
 
 interface EditRow {
@@ -21,7 +21,7 @@ function toEdit(r: OcrRow): EditRow {
     room: r.room.value,
     note: r.note.value,
     kind: r.kind,
-    amount: r.amount.value,
+    amount: fmtVndInput(r.amount.value),
     conf: { date: r.txn_date.confidence, room: r.room.confidence, amount: r.amount.confidence },
   };
 }
@@ -247,7 +247,7 @@ export default function Review() {
                   <input value={r.room} onChange={(e) => update(i, { room: e.target.value })} className="field" />
                 </Field>
                 <Field label="Số tiền" low={r.conf.amount < LOW_CONF}>
-                  <input inputMode="numeric" value={r.amount} onChange={(e) => update(i, { amount: e.target.value })} className="field num" />
+                  <input inputMode="numeric" value={r.amount} onChange={(e) => update(i, { amount: fmtVndInput(e.target.value) })} className="field num" />
                 </Field>
                 <Field label="Nội dung" full>
                   <input value={r.note} onChange={(e) => update(i, { note: e.target.value })} className="field" />

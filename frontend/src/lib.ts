@@ -12,6 +12,16 @@ export function parseVnd(s: string): number {
 }
 
 /**
+ * Định dạng giá trị ô nhập tiền theo từng phím gõ: "10000" -> "10.000".
+ * Chỉ giữ chữ số rồi chấm phân nhóm hàng nghìn (kiểu vi-VN), không kèm ký
+ * hiệu ₫ để người dùng tiếp tục gõ. Chuỗi rỗng -> "".
+ */
+export function fmtVndInput(s: string): string {
+  const digits = s.replace(/[^\d]/g, "");
+  return digits ? new Intl.NumberFormat("vi-VN").format(parseInt(digits, 10)) : "";
+}
+
+/**
  * Resize nhẹ ảnh phía client TRƯỚC khi upload — chỉ để chặn ảnh quá khổ.
  *
  * QUAN TRỌNG cho chất lượng OCR: KHÔNG bóp quá tay ở đây, vì server (vlm.py)

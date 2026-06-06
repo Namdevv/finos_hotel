@@ -1,121 +1,104 @@
-# FinOS Hotel — Ứng dụng kế toán khách sạn (OCR sổ viết tay)
+<p align="center">
+  <img src="frontend/public/logo_finos.png" alt="FinOS Hotel" width="180" />
+</p>
 
-Số hóa sổ sách khách sạn: **chụp ảnh sổ → OCR trích xuất → người dùng duyệt/sửa → lưu → thống kê thu/chi**.
-Self-host trong mạng LAN. OCR dùng VLM (Qwen2.5-VL qua Ollama) chạy trên máy có GPU.
+# FinOS Hotel
 
-> **Nguyên tắc cốt lõi:** OCR chỉ *điền sẵn* form. Con người **luôn duyệt** trước khi lưu
-> (chữ viết tay không đủ tin cậy để ghi thẳng vào sổ kế toán).
+FinOS Hotel là ứng dụng nội bộ giúp khách sạn số hóa sổ thu chi viết tay. Thay vì nhập lại từng dòng từ sổ giấy, nhân viên có thể chụp ảnh trang sổ, hệ thống dùng OCR/AI để đọc dữ liệu, sau đó người dùng kiểm tra và chỉnh lại trước khi lưu thành chứng từ kế toán.
 
-## Kiến trúc
+Nguyên tắc chính của dự án: **AI chỉ hỗ trợ nhập liệu, không tự ghi thẳng vào sổ kế toán**. Mọi dòng OCR đều phải được con người duyệt lại trước khi lưu.
 
-| Lớp | Công nghệ |
-|---|---|
-| Backend | FastAPI + SQLite (WAL) + worker nền (hàng đợi bằng bảng `jobs`, concurrency = 1) |
-| OCR | **VLM Qwen2.5-VL qua Ollama** — đọc tổng thể trang sổ (hiểu bảng kẻ cột, số khoanh tròn, chữ viết tay). Chạy ở Ollama trên máy có GPU; backend chỉ gọi HTTP |
-| Xử lý ảnh | Gửi ảnh **gốc nguyên mẫu** cho VLM (không thu nhỏ/không nén). Chỉ xoay đúng chiều khi cần (sổ chụp ngang, `FINOS_OCR_ROTATE=90`; đặt 0 để giữ y hệt bytes gốc) |
-| Frontend | React + Vite + Tailwind, build tĩnh, **PWA** (cài như app, dùng camera) |
-| Auth | JWT + Argon2, phân quyền 3 vai trò |
+## Dự án giải quyết việc gì?
 
-**Vai trò:** `admin` (toàn quyền + quản user + báo cáo + nhật ký hoạt động) · `accountant` (nhập/duyệt/sửa, xóa mềm chứng từ + báo cáo) · `receptionist`/nhân viên (chụp OCR, lưu/xem/sửa chứng từ, không xóa; dashboard chỉ xem tổng hôm nay).
+- Chụp hoặc tải ảnh trang sổ khách sạn từ điện thoại/máy tính.
+- Nhận dạng các dòng thu/chi từ ảnh sổ viết tay.
+- Cho người dùng xem lại ảnh gốc song song với kết quả OCR.
+- Sửa ngày, phòng/khách, nội dung, loại giao dịch và số tiền trước khi lưu.
+- Lưu chứng từ đã duyệt vào hệ thống.
+- Xem danh sách chứng từ, chỉnh sửa, xóa theo quyền.
+- Thống kê tổng thu, tổng chi, chênh lệch theo ngày hoặc theo tháng.
+- Quản lý người dùng và phân quyền nội bộ.
 
-**Giao diện:** bảng màu & design tokens xem [COLORS.md](COLORS.md) — tham khảo file này khi làm UI mới để giữ đồng bộ.
+## Luồng hoạt động
 
-## Cấu trúc thư mục
+1. Nhân viên đăng nhập vào hệ thống.
+2. Vào màn hình chụp ảnh, chụp trang sổ hoặc chọn ảnh có sẵn.
+3. Hệ thống tạo một job OCR và đưa vào hàng đợi xử lý.
+4. Worker gửi ảnh sang Ollama để model Qwen2.5-VL đọc nội dung.
+5. Kết quả OCR được tách thành các dòng giao dịch đề xuất.
+6. Người dùng vào màn hình duyệt, so sánh ảnh gốc với từng dòng được đọc ra.
+7. Người dùng sửa sai nếu có, thêm/xóa dòng nếu cần.
+8. Khi bấm lưu, các dòng đã duyệt mới trở thành chứng từ chính thức.
+9. Dashboard và báo cáo lấy dữ liệu từ các chứng từ đã lưu.
 
-```
-FinOS_Hotel/
-├─ Dockerfile, docker-compose.yml, .env.example   # triển khai
-├─ backend/
-│  ├─ app/            # FastAPI: routers, ocr/, jobs/worker.py, security, db
-│  ├─ poc/ocr_poc.py  # POC đo độ chính xác + RAM + tốc độ trên ảnh thật
-│  ├─ tests/          # smoke_test.py + ocr_integration_test.py
-│  └─ requirements.txt
-└─ frontend/          # PWA React (build -> dist, gộp vào image Docker)
-```
+Nếu ảnh bị xoay sai hoặc OCR đọc thiếu dòng, người dùng có thể chạy OCR lại với góc xoay khác.
 
-## Yêu cầu OCR: Ollama + Qwen2.5-VL (máy có GPU)
+## Các vai trò trong hệ thống
 
-OCR chạy bằng VLM trên **Ollama** (nên đặt ở máy có GPU, ví dụ ≥8-12GB VRAM):
+- `admin`: toàn quyền, quản lý người dùng, xem báo cáo, xem nhật ký hoạt động và xóa dữ liệu.
+- `accountant`: nhập, duyệt, sửa chứng từ, xóa mềm chứng từ và xem báo cáo.
+- `receptionist`: chụp OCR, duyệt/lưu chứng từ, xem/sửa chứng từ; dashboard chỉ hiển thị tổng trong ngày.
+
+Phân quyền được xử lý ở cả backend API và giao diện frontend.
+
+## Thành phần chính
+
+| Thành phần | Vai trò |
+| --- | --- |
+| Frontend | Ứng dụng React/Vite dạng PWA, dùng được trên điện thoại để chụp ảnh và duyệt chứng từ. |
+| Backend | FastAPI cung cấp API đăng nhập, OCR job, chứng từ, thống kê, người dùng và nhật ký hoạt động. |
+| Database | SQLite lưu user, job OCR, chứng từ và activity log. |
+| OCR Worker | Worker nền xử lý hàng đợi OCR từng job một để tránh tranh tài nguyên GPU. |
+| Ollama/VLM | Chạy model Qwen2.5-VL để đọc ảnh sổ viết tay. Backend gọi qua HTTP. |
+| Docker | Đóng gói backend và frontend để chạy trong mạng LAN. |
+
+## Cách dữ liệu được lưu
+
+- Ảnh upload được lưu trong thư mục dữ liệu của ứng dụng.
+- Mỗi ảnh tạo ra một OCR job, có trạng thái `queued`, `processing`, `done` hoặc `failed`.
+- Kết quả OCR chỉ là dữ liệu nháp gắn với job.
+- Chỉ khi người dùng bấm lưu ở màn hình duyệt, hệ thống mới tạo chứng từ trong bảng giao dịch.
+- Chứng từ có thể liên kết lại với ảnh/job OCR ban đầu để đối chiếu khi cần.
+
+## Giao diện chính
+
+- **Dashboard**: xem tổng thu, tổng chi, chênh lệch và biểu đồ theo ngày/tháng.
+- **Chụp ảnh**: mở camera hoặc chọn ảnh từ album, xoay ảnh trước khi OCR.
+- **Duyệt OCR**: xem ảnh gốc, kiểm tra từng dòng, sửa số tiền/ngày/phòng/nội dung rồi lưu.
+- **Chứng từ**: tra cứu, lọc, thêm/sửa/xóa giao dịch đã duyệt.
+- **Lịch sử upload**: xem lại các ảnh đã OCR, trạng thái job, chạy OCR lại hoặc xóa lịch sử.
+- **Người dùng**: admin quản lý tài khoản và vai trò.
+- **Hồ sơ**: đổi thông tin cá nhân/mật khẩu.
+
+## Triển khai ở mức tổng quan
+
+Dự án được thiết kế để self-host trong mạng LAN của khách sạn. Một máy chạy ứng dụng web và database; phần OCR dùng Ollama, nên tốt nhất đặt trên máy có GPU.
+
+Thông thường chỉ cần:
 
 ```bash
-# Trên máy chạy OCR:
-ollama pull qwen2.5vl:7b      # tải model (1 lần)
-# Ollama tự chạy nền ở cổng 11434
-```
-
-Backend trỏ tới Ollama qua `FINOS_OLLAMA_HOST` (mặc định `http://localhost:11434`;
-từ trong Docker dùng `http://host.docker.internal:11434`). Có thể đặt Ollama và app
-trên cùng máy GPU, hoặc tách máy trong LAN.
-
-## Triển khai bằng Docker (khuyến nghị — build 1 nơi, chạy nơi khác)
-
-Trên máy đích trong LAN (đã cài Docker + Ollama như trên):
-
-```bash
-cp .env.example .env          # ĐỔI FINOS_SECRET_KEY, FINOS_ADMIN_PASSWORD, kiểm FINOS_OLLAMA_HOST
 docker compose up -d --build
 ```
 
-Truy cập từ điện thoại/máy khác cùng mạng: `http://<IP-máy-chạy>:8000`
-(đăng nhập bằng tài khoản admin trong `.env`).
+Ứng dụng sau đó được truy cập từ các thiết bị cùng mạng qua địa chỉ máy chạy server, ví dụ `http://<IP-may-chu>:8000`.
 
-- Dữ liệu (DB + ảnh) nằm trong volume `finos_data` → bền vững qua các lần rebuild.
-- Container nhẹ (không kèm model OCR); phần nặng do Ollama đảm nhiệm trên máy GPU.
+Chi tiết biến môi trường, model OCR, tài khoản admin ban đầu và cấu hình máy chạy thật nằm trong `.env.example`, `docker-compose.yml` và mã nguồn backend. README này chỉ giữ phần mô tả tổng quan để dễ nắm dự án.
 
-## Phát triển cục bộ
+## Cấu trúc thư mục
 
-Backend rất nhẹ (OCR nằm ở Ollama, không cần torch/onnx/opencv). Tầng web chạy
-được mà không cần Ollama; chỉ luồng OCR mới cần Ollama đang chạy + đã pull model.
-
-```powershell
-# Backend
-cd backend
-py -m venv .venv
-./.venv/Scripts/python.exe -m pip install -r requirements.txt
-./.venv/Scripts/python.exe -m uvicorn app.main:app --reload     # http://localhost:8000
-
-# Frontend (terminal khác)
-cd frontend
-npm install
-npm run dev      # http://localhost:5173 (proxy /api -> 8000)
+```text
+finos_hotel/
+├─ backend/      # FastAPI, database, routers, OCR worker
+├─ frontend/     # React/Vite PWA
+├─ Dockerfile    # Build backend + frontend thành một image
+├─ docker-compose.yml
+├─ COLORS.md     # Quy chuẩn màu và giao diện
+└─ README.md
 ```
 
-### Kiểm thử
+## Ghi chú vận hành
 
-```powershell
-cd backend
-# Tầng web: auth, RBAC, transactions, parse tiền/ngày
-$env:PYTHONUTF8=1; ./.venv/Scripts/python.exe -m tests.smoke_test
-# Luồng OCR đầy đủ (cần Ollama đang chạy + đã pull model + có ảnh poc/_sample.png)
-./.venv/Scripts/python.exe -m tests.ocr_integration_test
-```
-
-### Nạp dữ liệu DEMO để xem UI
-
-```powershell
-cd backend
-# Nạp 22 giao dịch + 3 user mẫu vào DB demo riêng (không đụng dữ liệu thật)
-$env:FINOS_DB_PATH="demo.db"; $env:FINOS_UPLOAD_DIR="demo_uploads"; $env:PYTHONUTF8=1
-./.venv/Scripts/python.exe -m tests.seed_demo
-# Chạy thử với DB demo
-./.venv/Scripts/python.exe -m uvicorn app.main:app --port 8011
-```
-Đăng nhập: `admin/admin123`, `ketoan/ketoan123`, `letan/letan123`.
-
-## Test OCR trên ảnh sổ thật
-
-Cần Ollama đang chạy + `ollama pull qwen2.5vl:7b`. Sổ chụp ngang thì thêm `--rotate 90`:
-
-```bash
-py backend/poc/ocr_vlm_test.py duong_dan/anh_so.jpg --rotate 90 --raw
-py backend/poc/ocr_vlm_test.py duong_dan/thu_muc_anh/ --rotate 90
-```
-
-In ra phòng + tổng tiền từng dòng (đã quy ước nghìn ×1.000). `--raw` in kèm JSON
-thô của model để dò chỗ đọc sai. Tinh chỉnh `--rotate` (0/90/180/270) và `--max-side`
-cho khớp cách bạn chụp; giá trị tốt đặt lại vào `.env` (`FINOS_OCR_ROTATE`, ...).
-
-## Bảo mật & sao lưu
-
-- ĐỔI `FINOS_SECRET_KEY` và mật khẩu admin trước khi dùng thật.
-- Sao lưu định kỳ volume `finos_data` (hoặc copy file `.db`) ra ổ/NAS khác trong LAN.
+- OCR chữ viết tay không đảm bảo đúng tuyệt đối, nên bước duyệt là bắt buộc.
+- Ảnh càng rõ, đủ sáng, ít nghiêng thì OCR càng ổn định.
+- Dữ liệu kế toán nên được sao lưu định kỳ.
+- Khi dùng thật cần đổi khóa bảo mật và mật khẩu admin mặc định trong cấu hình môi trường.

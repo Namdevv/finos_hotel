@@ -39,7 +39,7 @@ def _ledger_amount(token: str) -> int | None:
         return int(re.sub(r"\D", "", s))
     n = int(digits)
     # Số trần ngắn (<=3 chữ số) hiểu theo đơn vị nghìn.
-    return n * 1000 if len(digits) <= 3 else n
+    return n * 1000 if n < 10_000 else n
 
 
 def _to_record(raw: dict, *, today_iso: str) -> dict | None:

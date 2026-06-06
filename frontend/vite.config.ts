@@ -9,7 +9,17 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      // Tự đăng ký SW trong code (main.tsx) để bắt được sự kiện cập nhật và
+      // reload — KHÔNG dùng script register mặc định (bản tối giản, không reload
+      // khi có bản mới → phải Ctrl+Shift+R mới thấy code mới).
+      injectRegister: false,
       includeAssets: ["favicon.svg", "logo_finos.png"],
+      workbox: {
+        // Dọn cache của bản build cũ ngay khi SW mới kích hoạt.
+        cleanupOutdatedCaches: true,
+        // /api luôn đi thẳng tới backend, không bao giờ trả index.html từ cache.
+        navigateFallbackDenylist: [/^\/api/],
+      },
       manifest: {
         name: "FinOS Hotel — Kế toán khách sạn",
         short_name: "FinOS Hotel",

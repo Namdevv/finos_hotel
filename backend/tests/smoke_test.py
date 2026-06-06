@@ -17,6 +17,7 @@ os.environ["FINOS_ADMIN_PASSWORD"] = "admin123"
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.main import app  # noqa: E402
+from app.ocr.pipeline import _ledger_amount  # noqa: E402
 from app.ocr.parse import parse_amount, parse_date  # noqa: E402
 
 PASS, FAIL = 0, 0
@@ -41,6 +42,11 @@ def main():
     check("1.5tr -> 1500000", parse_amount("1.5tr") == 1500000)
     check("rác -> None", parse_amount("abc") is None)
     check("ngày 05/06/2026", parse_date("05/06/2026") == "2026-06-05")
+
+    check("OCR ledger 100 -> 100000", _ledger_amount("100") == 100000)
+    check("OCR ledger 1000 -> 1000000", _ledger_amount("1000") == 1000000)
+    check("OCR ledger 1200 -> 1200000", _ledger_amount("1200") == 1200000)
+    check("OCR full VND 1000000 -> 1000000", _ledger_amount("1000000") == 1000000)
 
     with TestClient(app) as c:
         print("== Health ==")

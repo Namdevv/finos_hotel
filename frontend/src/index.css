@@ -10,9 +10,30 @@ body,
   height: 100%;
 }
 
+html {
+  /* Chặn iOS/Android tự resize chữ khi xoay máy -> giữ layout ổn định */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   @apply bg-slate-100 text-slate-800 antialiased;
   font-feature-settings: "tnum" 1; /* số canh đều - hợp bảng kế toán */
+  /* Cảm giác như app: bỏ delay double-tap zoom, chặn kéo lố (overscroll) */
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}
+
+/* iOS Safari LUÔN auto-zoom khi chạm vào ô nhập có font < 16px (kể cả khi
+   viewport user-scalable=no, vì iOS bỏ qua cờ đó). Ép font tối thiểu 16px
+   trên thiết bị cảm ứng để dừng việc tự phóng to -> vỡ khung. Desktop giữ
+   nguyên text-sm cho gọn. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 @layer components {
