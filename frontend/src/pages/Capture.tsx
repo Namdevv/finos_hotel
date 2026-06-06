@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { Button, Card } from "../components/ui";
-import { IconCamera, IconImage, IconRotate, IconSpark } from "../components/icons";
+import { IconImage, IconCamera, IconRotate, IconSpark } from "../components/icons";
 
 const DEFAULT_ROTATE = 90;
 
@@ -115,10 +115,6 @@ export default function Capture() {
         )}
 
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => cameraRef.current?.click()} className="flex-1">
-            <IconCamera className="h-4 w-4" />
-            {preview ? "Chụp lại" : "Chụp ảnh"}
-          </Button>
           <Button variant="secondary" size="sm" onClick={() => galleryRef.current?.click()} className="flex-1">
             <IconImage className="h-4 w-4" />
             Từ album
