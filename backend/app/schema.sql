@@ -65,7 +65,6 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 CREATE INDEX IF NOT EXISTS idx_txn_date ON transactions(txn_date);
 CREATE INDEX IF NOT EXISTS idx_txn_kind ON transactions(kind);
-CREATE INDEX IF NOT EXISTS idx_txn_deleted ON transactions(deleted_at);
 
 -- ---------------------------------------------------------------------------
 -- Nhật ký hoạt động — tracking thao tác chính của nhân viên/kế toán/admin.

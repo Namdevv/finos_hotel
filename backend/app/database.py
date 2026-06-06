@@ -59,6 +59,7 @@ def init_db() -> None:
             conn.execute("ALTER TABLE transactions ADD COLUMN deleted_at TEXT")
         if "deleted_by" not in txn_cols:
             conn.execute("ALTER TABLE transactions ADD COLUMN deleted_by INTEGER REFERENCES users(id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_txn_deleted ON transactions(deleted_at)")
         conn.commit()
 
         count = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
