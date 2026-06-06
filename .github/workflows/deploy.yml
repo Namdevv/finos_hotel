@@ -19,7 +19,9 @@ jobs:
 
     defaults:
       run:
-        shell: powershell
+        # Bo qua profile.ps1 + bypass execution policy (may dat Restricted),
+        # tranh loi "running scripts is disabled on this system".
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '{0}'"
         # Thu muc clone DANG deploy tren may dich (noi da co san .env).
         # >>> Doi lai cho dung duong dan tren may ban <<<
         working-directory: D:\WorkPace\deploy\finos_hotel
