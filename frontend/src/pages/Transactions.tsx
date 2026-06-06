@@ -145,11 +145,25 @@ export default function Transactions() {
       <Card className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
         <label className="text-sm">
           <span className="mb-1 block text-xs font-medium text-slate-500">Từ ngày</span>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="field" />
+          <div className="relative">
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="field" />
+            {!from && (
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">
+                dd/mm/yyyy
+              </span>
+            )}
+          </div>
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs font-medium text-slate-500">Đến ngày</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="field" />
+          <div className="relative">
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="field" />
+            {!to && (
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">
+                dd/mm/yyyy
+              </span>
+            )}
+          </div>
         </label>
         <label className="col-span-2 text-sm sm:col-span-1">
           <span className="mb-1 block text-xs font-medium text-slate-500">Loại</span>

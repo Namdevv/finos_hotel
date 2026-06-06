@@ -33,6 +33,9 @@ body {
     input[type="time"].field {
       -webkit-appearance: none;
       appearance: none;
+      /* appearance:none làm date input thấp/dẹp trên iOS -> ép cao bằng
+         các field khác (.field ~ 2.375rem: text-sm 20px + py-2 16px + viền 2px) */
+      min-height: 2.375rem;
     }
     input[type="date"].field::-webkit-date-and-time-value {
       text-align: left;

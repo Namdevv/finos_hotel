@@ -57,9 +57,7 @@ export default function Layout() {
       {/* ===== Sidebar (desktop) ===== */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-ink-900 text-slate-300 md:flex">
         <div className="flex items-center gap-3 px-5 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 font-extrabold text-white">
-            F
-          </div>
+          <img src="/logo_finos.png" alt="FinOS Hotel" className="h-9 w-9 rounded-lg object-cover" />
           <div>
             <div className="text-base font-bold leading-tight text-white">FinOS Hotel</div>
             <div className="text-[11px] text-slate-400">Kế toán khách sạn</div>
@@ -122,9 +120,7 @@ export default function Layout() {
         {/* Topbar */}
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-8">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-600 text-sm font-extrabold text-white md:hidden">
-              F
-            </div>
+            <img src="/logo_finos.png" alt="FinOS Hotel" className="h-7 w-7 rounded-md object-cover md:hidden" />
             <h1 className="text-base font-bold text-slate-900 md:text-lg">{title}</h1>
           </div>
           <div className="flex items-center gap-3">
