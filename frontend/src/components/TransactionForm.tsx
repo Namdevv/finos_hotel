@@ -3,17 +3,27 @@ import { api } from "../api";
 import { Button, Input } from "./ui";
 import { IconArrowDown, IconArrowUp } from "./icons";
 import { fmtVnd, parseVnd } from "../lib";
-import type { Kind } from "../types";
+import type { Kind, Transaction } from "../types";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
-/** Form nhập chứng từ THỦ CÔNG (source = manual). Gọi onSaved sau khi lưu. */
-export default function TransactionForm({ onSaved }: { onSaved: () => void }) {
-  const [txn_date, setDate] = useState(todayIso());
-  const [kind, setKind] = useState<Kind>("income");
-  const [room, setRoom] = useState("");
-  const [note, setNote] = useState("");
-  const [amount, setAmount] = useState("");
+/**
+ * Form chứng từ. Không truyền `transaction` → thêm mới (source = manual).
+ * Có `transaction` → sửa chứng từ hiện có. Gọi onSaved sau khi lưu.
+ */
+export default function TransactionForm({
+  onSaved,
+  transaction,
+}: {
+  onSaved: () => void;
+  transaction?: Transaction;
+}) {
+  const editing = !!transaction;
+  const [txn_date, setDate] = useState(transaction?.txn_date || todayIso());
+  const [kind, setKind] = useState<Kind>(transaction?.kind || "income");
+  const [room, setRoom] = useState(transaction?.room || "");
+  const [note, setNote] = useState(transaction?.note || "");
+  const [amount, setAmount] = useState(transaction ? String(transaction.amount) : "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -28,14 +38,24 @@ export default function TransactionForm({ onSaved }: { onSaved: () => void }) {
     }
     setBusy(true);
     try {
-      await api.createTransaction({
-        txn_date: txn_date || todayIso(),
-        room,
-        note,
-        kind,
-        amount: amountNum,
-        source: "manual",
-      });
+      if (editing) {
+        await api.updateTransaction(transaction!.id, {
+          txn_date: txn_date || todayIso(),
+          room,
+          note,
+          kind,
+          amount: amountNum,
+        });
+      } else {
+        await api.createTransaction({
+          txn_date: txn_date || todayIso(),
+          room,
+          note,
+          kind,
+          amount: amountNum,
+          source: "manual",
+        });
+      }
       onSaved();
     } catch (err) {
       setError((err as Error).message || "Lưu thất bại");
@@ -94,7 +114,7 @@ export default function TransactionForm({ onSaved }: { onSaved: () => void }) {
       )}
 
       <Button type="submit" disabled={busy} className="w-full">
-        {busy ? "Đang lưu…" : "Lưu chứng từ"}
+        {busy ? "Đang lưu…" : editing ? "Cập nhật chứng từ" : "Lưu chứng từ"}
       </Button>
     </form>
   );

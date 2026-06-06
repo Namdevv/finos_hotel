@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { Badge, Button, Card, Modal, Spinner } from "../components/ui";
-import { IconArrowDown, IconArrowUp, IconFilter, IconPlus, IconTrash } from "../components/icons";
+import { IconArrowDown, IconArrowUp, IconFilter, IconPencil, IconPlus, IconTrash } from "../components/icons";
 import TransactionForm from "../components/TransactionForm";
 import { fmtVnd } from "../lib";
 import type { Transaction } from "../types";
@@ -15,6 +15,7 @@ export default function Transactions() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Transaction | null>(null);
 
   async function load() {
     setItems(null);
@@ -57,6 +58,19 @@ export default function Transactions() {
             load();
           }}
         />
+      </Modal>
+
+      {/* Modal sửa */}
+      <Modal open={!!editing} onClose={() => setEditing(null)} title="Sửa chứng từ">
+        {editing && (
+          <TransactionForm
+            transaction={editing}
+            onSaved={() => {
+              setEditing(null);
+              load();
+            }}
+          />
+        )}
       </Modal>
 
       {/* Thanh lọc */}
@@ -133,13 +147,22 @@ export default function Transactions() {
                       </td>
                       <td className="num">
                         {canEdit && (
-                          <button
-                            onClick={() => del(t.id)}
-                            title="Xóa"
-                            className="cursor-pointer rounded-md p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                          >
-                            <IconTrash className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setEditing(t)}
+                              title="Sửa"
+                              className="cursor-pointer rounded-md p-1.5 text-slate-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+                            >
+                              <IconPencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => del(t.id)}
+                              title="Xóa"
+                              className="cursor-pointer rounded-md p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                            >
+                              <IconTrash className="h-4 w-4" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -171,9 +194,14 @@ export default function Transactions() {
                     {fmtVnd(t.amount)}
                   </span>
                   {canEdit && (
-                    <button onClick={() => del(t.id)} className="cursor-pointer p-1 text-slate-400 hover:text-rose-600">
-                      <IconTrash className="h-4 w-4" />
-                    </button>
+                    <>
+                      <button onClick={() => setEditing(t)} title="Sửa" className="cursor-pointer p-1 text-slate-400 hover:text-brand-600">
+                        <IconPencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => del(t.id)} title="Xóa" className="cursor-pointer p-1 text-slate-400 hover:text-rose-600">
+                        <IconTrash className="h-4 w-4" />
+                      </button>
+                    </>
                   )}
                 </div>
               </Card>

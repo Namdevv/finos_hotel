@@ -62,6 +62,11 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
   me: () => request<User>("/auth/me"),
+  updateProfile: (body: {
+    full_name?: string;
+    current_password?: string;
+    new_password?: string;
+  }) => request<User>("/auth/me", { method: "PATCH", body: JSON.stringify(body) }),
 
   // Users
   listUsers: () => request<User[]>("/users"),
@@ -95,9 +100,11 @@ export const api = {
     request<void>(`/transactions/${id}`, { method: "DELETE" }),
 
   // OCR — gửi ảnh GỐC (không nén) để giữ toàn vẹn cho VLM.
-  uploadImage: (file: File) => {
+  // rotate: góc xoay khi upload (0/90/180/270); null = dùng mặc định cấu hình.
+  uploadImage: (file: File, rotate: number | null = null) => {
     const fd = new FormData();
     fd.append("file", file, file.name || "capture.jpg");
+    if (rotate !== null) fd.append("rotate", String(rotate));
     return request<{ id: number; status: string }>("/ocr/upload", {
       method: "POST",
       body: fd,

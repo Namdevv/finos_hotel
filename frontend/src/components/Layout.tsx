@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { ROLE_LABEL, type Role } from "../types";
 import {
@@ -8,6 +8,7 @@ import {
   IconHistory,
   IconLogout,
   IconReceipt,
+  IconUser,
   IconUsers,
 } from "./icons";
 
@@ -16,14 +17,17 @@ interface NavItem {
   label: string;
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   roles?: Role[];
+  /** Hiện trên thanh điều hướng dưới (mobile). Mục không bật sẽ truy cập qua Hồ sơ. */
+  mobile?: boolean;
 }
 
 const NAV: NavItem[] = [
-  { to: "/", label: "Tổng quan", Icon: IconDashboard, roles: ["admin", "accountant"] },
-  { to: "/capture", label: "Chụp sổ", Icon: IconCamera },
+  { to: "/", label: "Tổng quan", Icon: IconDashboard, roles: ["admin", "accountant"], mobile: true },
+  { to: "/capture", label: "Chụp sổ", Icon: IconCamera, mobile: true },
   { to: "/uploads", label: "Lịch sử", Icon: IconHistory },
-  { to: "/transactions", label: "Chứng từ", Icon: IconReceipt },
+  { to: "/transactions", label: "Chứng từ", Icon: IconReceipt, mobile: true },
   { to: "/users", label: "Người dùng", Icon: IconUsers, roles: ["admin"] },
+  { to: "/profile", label: "Hồ sơ", Icon: IconUser, mobile: true },
 ];
 
 const TITLES: Record<string, string> = {
@@ -32,12 +36,18 @@ const TITLES: Record<string, string> = {
   "/uploads": "Lịch sử ảnh",
   "/transactions": "Chứng từ",
   "/users": "Người dùng",
+  "/profile": "Hồ sơ người dùng",
 };
 
 export default function Layout() {
   const { user, logout, hasRole } = useAuth();
   const loc = useLocation();
+  const nav = useNavigate();
   const items = NAV.filter((n) => !n.roles || hasRole(...n.roles));
+  // Desktop: bỏ "Hồ sơ" khỏi danh sách (đã có thẻ người dùng ở cuối sidebar).
+  const sidebarItems = items.filter((n) => n.to !== "/profile");
+  // Mobile: chỉ hiển thị các tab chính; Lịch sử/Người dùng truy cập qua Hồ sơ.
+  const mobileItems = items.filter((n) => n.mobile);
   const title =
     TITLES[loc.pathname] ?? (loc.pathname.startsWith("/review") ? "Duyệt & sửa chứng từ" : "FinOS Hotel");
   const initials = (user?.full_name || user?.username || "?").trim().charAt(0).toUpperCase();
@@ -60,7 +70,7 @@ export default function Layout() {
           <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Nghiệp vụ
           </div>
-          {items.map(({ to, label, Icon }) => (
+          {sidebarItems.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -81,15 +91,21 @@ export default function Layout() {
 
         <div className="border-t border-white/10 p-3">
           <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500/20 font-bold text-brand-200">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-white">
-                {user?.full_name || user?.username}
+            <button
+              onClick={() => nav("/profile")}
+              title="Hồ sơ người dùng"
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500/20 font-bold text-brand-200">
+                {initials}
               </div>
-              <div className="text-[11px] text-slate-400">{user ? ROLE_LABEL[user.role] : ""}</div>
-            </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-white">
+                  {user?.full_name || user?.username}
+                </div>
+                <div className="text-[11px] text-slate-400">{user ? ROLE_LABEL[user.role] : ""}</div>
+              </div>
+            </button>
             <button
               onClick={logout}
               title="Đăng xuất"
@@ -128,7 +144,7 @@ export default function Layout() {
 
       {/* ===== Bottom nav (mobile) ===== */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
-        {items.map(({ to, label, Icon }) => (
+        {mobileItems.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
