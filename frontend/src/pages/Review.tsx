@@ -40,6 +40,7 @@ export default function Review() {
   const [showReocr, setShowReocr] = useState(false);
   const [zoom, setZoom] = useState(false);
   const [reocrNonce, setReocrNonce] = useState(0);
+  const [bulkDate, setBulkDate] = useState(todayIso());
   const polling = useRef<number | null>(null);
 
   useEffect(() => {
@@ -49,7 +50,9 @@ export default function Review() {
         const j = await api.getJob(id);
         setJob(j);
         if (j.status === "done") {
-          setRows(j.rows.map(toEdit));
+          const edits = j.rows.map(toEdit);
+          setRows(edits);
+          if (edits[0]?.txn_date) setBulkDate(edits[0].txn_date);
           loadImage(id);
         } else if (j.status === "failed") {
           setError(j.error || "OCR thất bại");
@@ -82,6 +85,12 @@ export default function Review() {
 
   function update(i: number, patch: Partial<EditRow>) {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  // Gán ngày cho tất cả các dòng cùng lúc — sổ thường được chụp tổng hợp
+  // sau một ngày nên các dòng dùng chung một ngày.
+  function applyDateAll() {
+    if (!bulkDate) return;
+    setRows((rs) => rs.map((r) => ({ ...r, txn_date: bulkDate })));
   }
   function removeRow(i: number) {
     setRows((rs) => rs.filter((_, idx) => idx !== i));
@@ -232,6 +241,22 @@ export default function Review() {
         </Card>
 
         <div className="space-y-3">
+          <Card className="flex flex-wrap items-end gap-2 !py-3">
+            <label className="block grow">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Ngày chung</span>
+              <input
+                type="date"
+                value={bulkDate}
+                onChange={(e) => setBulkDate(e.target.value)}
+                className="field"
+              />
+            </label>
+            <Button variant="secondary" onClick={applyDateAll} disabled={!bulkDate || rows.length === 0}>
+              <IconCheck className="h-4 w-4" />
+              Áp dụng cho tất cả
+            </Button>
+          </Card>
+
           {rows.map((r, i) => (
             <Card key={i} className="space-y-2.5">
               <div className="flex items-center justify-between">
