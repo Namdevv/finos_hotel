@@ -98,6 +98,11 @@ export const api = {
     }),
   deleteTransaction: (id: number) =>
     request<void>(`/transactions/${id}`, { method: "DELETE" }),
+  bulkDeleteTransactions: (ids: number[]) =>
+    request<void>("/transactions", {
+      method: "DELETE",
+      body: JSON.stringify({ ids }),
+    }),
 
   // OCR — gửi ảnh GỐC (không nén) để giữ toàn vẹn cho VLM.
   // rotate: góc xoay khi upload (0/90/180/270); null = dùng mặc định cấu hình.
@@ -119,8 +124,11 @@ export const api = {
     }),
   cancelJob: (id: number) =>
     request<void>(`/ocr/jobs/${id}/cancel`, { method: "POST" }),
-  deleteJob: (id: number) =>
-    request<void>(`/ocr/jobs/${id}`, { method: "DELETE" }),
+  deleteJob: (id: number, alsoDeleteTransactions = false) =>
+    request<void>(
+      `/ocr/jobs/${id}${alsoDeleteTransactions ? "?also_delete_transactions=true" : ""}`,
+      { method: "DELETE" },
+    ),
 
   // Stats
   summary: (params: Record<string, string> = {}) => {

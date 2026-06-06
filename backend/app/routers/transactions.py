@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..database import get_connection
 from ..deps import get_current_user, require_roles
-from ..models import TransactionCreate, TransactionOut, TransactionUpdate, UserOut
+from ..models import BulkDeleteRequest, TransactionCreate, TransactionOut, TransactionUpdate, UserOut
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 editor = require_roles("admin", "accountant")
@@ -80,6 +80,19 @@ def update_transaction(
         conn.commit()
     row = conn.execute("SELECT * FROM transactions WHERE id = ?", (txn_id,)).fetchone()
     return _row_to_txn(row)
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+def bulk_delete_transactions(
+    body: BulkDeleteRequest,
+    conn: sqlite3.Connection = Depends(get_connection),
+    _: UserOut = Depends(editor),
+):
+    if not body.ids:
+        return
+    placeholders = ",".join("?" * len(body.ids))
+    conn.execute(f"DELETE FROM transactions WHERE id IN ({placeholders})", body.ids)
+    conn.commit()
 
 
 @router.delete("/{txn_id}", status_code=status.HTTP_204_NO_CONTENT)

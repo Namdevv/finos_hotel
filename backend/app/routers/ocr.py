@@ -4,7 +4,7 @@ import sqlite3
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 
 from ..config import get_settings
@@ -142,10 +142,11 @@ def cancel_job(
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_job(
     job_id: int,
+    also_delete_transactions: bool = Query(False, description="Xóa luôn chứng từ liên kết với job này"),
     conn: sqlite3.Connection = Depends(get_connection),
     _: UserOut = Depends(require_roles("admin")),
 ):
-    """Xóa 1 mục lịch sử (chỉ admin). Tách khỏi chứng từ đã lưu rồi xóa ảnh + job."""
+    """Xóa 1 mục lịch sử (chỉ admin). Mặc định tách liên kết chứng từ; nếu also_delete_transactions=true thì xóa luôn chứng từ."""
     row = conn.execute("SELECT status, image_path FROM jobs WHERE id = ?", (job_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy job")
@@ -155,8 +156,10 @@ def delete_job(
         from ..jobs.worker import worker
         worker.request_cancel(job_id)
 
-    # Giữ lại chứng từ đã duyệt, chỉ gỡ liên kết tới ảnh sắp xóa.
-    conn.execute("UPDATE transactions SET job_id=NULL WHERE job_id=?", (job_id,))
+    if also_delete_transactions:
+        conn.execute("DELETE FROM transactions WHERE job_id=?", (job_id,))
+    else:
+        conn.execute("UPDATE transactions SET job_id=NULL WHERE job_id=?", (job_id,))
     conn.execute("DELETE FROM jobs WHERE id=?", (job_id,))
     conn.commit()
 
