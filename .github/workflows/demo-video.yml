@@ -16,7 +16,11 @@ permissions:
 jobs:
   record-demo:
     name: Record Playwright demo
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted]
+
+    defaults:
+      run:
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '{0}'"
 
     steps:
       - name: Checkout
@@ -35,7 +39,7 @@ jobs:
 
       - name: Install Playwright browser
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Build frontend
         working-directory: frontend
@@ -46,7 +50,6 @@ jobs:
         run: npm run demo:video
 
       - name: Copy demo video
-        shell: pwsh
         run: |
           $video = Get-ChildItem -Path frontend/test-results -Recurse -Filter video.webm | Select-Object -First 1
           if (-not $video) {
@@ -63,14 +66,14 @@ jobs:
 
       - name: Commit updated demo video
         if: github.event_name == 'push'
-        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/demo/finos-hotel-demo.webm
-          if git diff --cached --quiet; then
-            echo "Demo video unchanged."
-          else
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Demo video unchanged."
+          } else {
             git commit -m "chore: update demo video [skip ci]"
             git push
-          fi
+          }
