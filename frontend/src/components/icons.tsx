@@ -177,3 +177,11 @@ export const IconChevronRight = (p: P) => (
     <path d="m9 18 6-6-6-6" />
   </svg>
 );
+
+export const IconDots = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="5" cy="12" r="1" fill="currentColor" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" />
+    <circle cx="19" cy="12" r="1" fill="currentColor" />
+  </svg>
+);

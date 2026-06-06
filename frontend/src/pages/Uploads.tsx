@@ -65,9 +65,9 @@ export default function Uploads() {
 
   async function onDelete(e: React.MouseEvent, id: number) {
     e.stopPropagation();
-    if (!window.confirm("Xóa ảnh này khỏi lịch sử? Chứng từ đã lưu vẫn được giữ.")) return;
+    if (!window.confirm("Xóa ảnh này và toàn bộ chứng từ đã lưu từ ảnh này?")) return;
     try {
-      await api.deleteJob(id);
+      await api.deleteJob(id, true);
       setJobs((js) => js?.filter((j) => j.id !== id) ?? null);
     } catch (err) {
       setError((err as Error).message);
