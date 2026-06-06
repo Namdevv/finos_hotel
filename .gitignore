@@ -36,6 +36,11 @@ frontend/dev-dist/
 frontend/vite.config.js
 frontend/vite.config.d.ts
 
+# ───────────── CI / Self-hosted runner ─────────────
+# GitHub Actions runner cai trong repo: nang (~340MB) + chua credentials.
+# KHONG BAO GIO commit.
+actions-runner/
+
 # ───────────── Logs / OS / IDE ─────────────
 *.log
 npm-debug.log*
