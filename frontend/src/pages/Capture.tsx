@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { Button, Card } from "../components/ui";
 import { IconCamera, IconImage, IconSpark } from "../components/icons";
-import { compressImage } from "../lib";
 
 export default function Capture() {
   const nav = useNavigate();
@@ -26,8 +25,8 @@ export default function Capture() {
     setBusy(true);
     setError("");
     try {
-      const blob = await compressImage(file);
-      const job = await api.uploadImage(blob);
+      // Gửi ảnh gốc (không nén) để OCR nhận đúng nguyên mẫu.
+      const job = await api.uploadImage(file);
       nav(`/review/${job.id}`);
     } catch (err) {
       setError((err as Error).message || "Tải ảnh thất bại");

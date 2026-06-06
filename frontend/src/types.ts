@@ -37,12 +37,32 @@ export interface OcrRow {
   min_confidence: number;
 }
 
+export type JobStage = "preparing" | "recognizing" | "parsing";
+
+export type JobStatus = "queued" | "processing" | "done" | "failed";
+
 export interface Job {
   job_id: number;
-  status: "queued" | "processing" | "done" | "failed";
+  status: JobStatus;
+  stage?: JobStage | null;
+  rotate?: number | null;
+  cancelled?: boolean;
   image_path?: string | null;
   rows: OcrRow[];
   error?: string | null;
+}
+
+export interface JobSummary {
+  id: number;
+  status: JobStatus;
+  stage?: JobStage | null;
+  error?: string | null;
+  rotate?: number | null;
+  cancelled?: boolean;
+  n_rows: number;
+  image_path?: string | null;
+  created_at: string;
+  finished_at?: string | null;
 }
 
 export interface StatsSummary {

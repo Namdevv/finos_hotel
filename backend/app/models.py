@@ -103,9 +103,30 @@ class OcrRow(BaseModel):
 class JobResult(BaseModel):
     job_id: int
     status: str
+    stage: Optional[str] = None   # 'preparing'|'recognizing'|'parsing' khi đang xử lý
+    rotate: Optional[int] = None  # góc xoay đã dùng (re-OCR)
+    cancelled: bool = False       # người dùng đã ngưng job
     image_path: Optional[str] = None
     rows: list[OcrRow] = []
     error: Optional[str] = None
+
+
+class JobSummary(BaseModel):
+    """Một mục trong thư viện ảnh đã upload (trang lịch sử)."""
+    id: int
+    status: str
+    stage: Optional[str] = None
+    error: Optional[str] = None
+    rotate: Optional[int] = None
+    cancelled: bool = False
+    n_rows: int = 0               # số dòng đã trích (nếu xong)
+    image_path: Optional[str] = None
+    created_at: str
+    finished_at: Optional[str] = None
+
+
+class ReocrRequest(BaseModel):
+    rotate: Optional[int] = None  # góc xoay mới (0/90/180/270); None = giữ mặc định
 
 
 # ----- Stats -----

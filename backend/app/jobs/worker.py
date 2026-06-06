@@ -1,8 +1,7 @@
 """Worker chạy nền: poll bảng jobs, xử lý OCR tuần tự (concurrency = 1).
 
-Tối ưu 4GB:
-- 1 thread duy nhất -> không bao giờ chạy 2 job OCR cùng lúc.
-- Model OCR lazy-load ở lần job đầu, tự unload sau N phút nhàn rỗi.
+1 thread duy nhất -> không gửi 2 ảnh cùng lúc cho Ollama (VLM nặng GPU, xử lý
+tuần tự cho ổn định). Bản thân OCR chạy ở Ollama ngoài tiến trình này.
 """
 from __future__ import annotations
 
@@ -11,10 +10,9 @@ import sqlite3
 import threading
 import time
 
-from ..config import get_settings
 from ..database import _connect
-from ..ocr.engine import engine
 from ..ocr.pipeline import run_ocr
+from ..ocr.vlm import OcrCancelled
 
 _POLL_SECONDS = 2.0
 
@@ -23,7 +21,8 @@ class OcrWorker:
     def __init__(self) -> None:
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
-        self._last_activity = time.monotonic()
+        self._current_job_id: int | None = None
+        self._cancel = threading.Event()   # yêu cầu ngắt job đang chạy
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -37,20 +36,19 @@ class OcrWorker:
         if self._thread:
             self._thread.join(timeout=5)
 
+    def request_cancel(self, job_id: int) -> None:
+        """Ngắt ngay job đang chạy (gọi từ thread request). Job khác bỏ qua."""
+        if job_id == self._current_job_id:
+            self._cancel.set()
+
     # ------------------------------------------------------------------
     def _run(self) -> None:
-        settings = get_settings()
-        idle_unload = settings.ocr_idle_unload_minutes * 60
         while not self._stop.is_set():
             job = self._claim_next_job()
             if job is None:
-                # Nhàn rỗi: giải phóng model nếu đã quá lâu không dùng.
-                if engine.loaded and (time.monotonic() - self._last_activity) > idle_unload:
-                    engine.unload()
                 self._stop.wait(_POLL_SECONDS)
                 continue
             self._process(job)
-            self._last_activity = time.monotonic()
 
     def _claim_next_job(self) -> sqlite3.Row | None:
         """Lấy 1 job queued và đánh dấu processing (atomic)."""
@@ -58,7 +56,7 @@ class OcrWorker:
         try:
             conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(
-                "SELECT * FROM jobs WHERE status = 'queued' ORDER BY id LIMIT 1"
+                "SELECT * FROM jobs WHERE status = 'queued' AND cancelled = 0 ORDER BY id LIMIT 1"
             ).fetchone()
             if row is None:
                 conn.execute("ROLLBACK")
@@ -75,9 +73,32 @@ class OcrWorker:
     def _process(self, job: sqlite3.Row) -> None:
         conn = _connect()
         t0 = time.monotonic()
+        self._current_job_id = job["id"]
+        self._cancel.clear()
+
+        def set_stage(stage: str) -> None:
+            # Ghi giai đoạn hiện tại để Review theo dõi (cùng thread, tuần tự).
+            conn.execute("UPDATE jobs SET stage=? WHERE id=?", (stage, job["id"]))
+            conn.commit()
+
+        def _mark_cancelled() -> None:
+            conn.execute(
+                "UPDATE jobs SET status='failed', stage=NULL, cancelled=1, error='Đã ngưng', "
+                "finished_at=datetime('now') WHERE id=?",
+                (job["id"],),
+            )
+            conn.commit()
+
         try:
-            result = run_ocr(job["image_path"])
+            result = run_ocr(
+                job["image_path"], on_stage=set_stage, rotate=job["rotate"],
+                should_cancel=self._cancel.is_set,
+            )
             duration = int((time.monotonic() - t0) * 1000)
+            # Cờ ngưng có thể được đặt ngay sau khi stream xong (giai đoạn parsing).
+            if self._cancel.is_set():
+                _mark_cancelled()
+                return
             conn.execute(
                 "UPDATE jobs SET status='done', result_json=?, raw_ocr_json=?, "
                 "duration_ms=?, finished_at=datetime('now') WHERE id=?",
@@ -89,6 +110,8 @@ class OcrWorker:
                 ),
             )
             conn.commit()
+        except OcrCancelled:
+            _mark_cancelled()
         except Exception as exc:  # noqa: BLE001 - ghi lỗi vào job để hiển thị cho user
             conn.execute(
                 "UPDATE jobs SET status='failed', error=?, finished_at=datetime('now') WHERE id=?",
@@ -96,6 +119,7 @@ class OcrWorker:
             )
             conn.commit()
         finally:
+            self._current_job_id = None
             conn.close()
 
 

@@ -19,12 +19,16 @@ class Settings(BaseSettings):
     access_token_minutes: int = 720
     db_path: str = "finos.db"
     upload_dir: str = "uploads"
-    max_upload_mb: int = 12
+    max_upload_mb: int = 25         # gửi ảnh gốc (không nén) nên cần dư dung lượng
 
     admin_username: str = "admin"
     admin_password: str = "admin123"
 
-    ocr_idle_unload_minutes: int = 5
+    # OCR qua VLM (Ollama). Ollama chạy ngoài tiến trình, thường trên máy có GPU.
+    ollama_host: str = "http://localhost:11434"
+    ocr_model: str = "qwen2.5vl:7b"
+    ocr_rotate: int = 90            # xoay ảnh về đúng chiều đọc (sổ chụp ngang); 0 = giữ nguyên ảnh gốc
+    ocr_timeout_seconds: int = 600  # 1 ảnh VLM có thể mất nhiều giây trên GPU
 
     @property
     def db_file(self) -> Path:

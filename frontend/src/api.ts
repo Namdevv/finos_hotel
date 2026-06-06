@@ -1,5 +1,6 @@
 import type {
   Job,
+  JobSummary,
   StatsBucket,
   StatsSummary,
   Transaction,
@@ -93,16 +94,26 @@ export const api = {
   deleteTransaction: (id: number) =>
     request<void>(`/transactions/${id}`, { method: "DELETE" }),
 
-  // OCR
-  uploadImage: (file: Blob) => {
+  // OCR — gửi ảnh GỐC (không nén) để giữ toàn vẹn cho VLM.
+  uploadImage: (file: File) => {
     const fd = new FormData();
-    fd.append("file", file, "capture.jpg");
+    fd.append("file", file, file.name || "capture.jpg");
     return request<{ id: number; status: string }>("/ocr/upload", {
       method: "POST",
       body: fd,
     });
   },
   getJob: (id: number) => request<Job>(`/ocr/jobs/${id}`),
+  listJobs: () => request<JobSummary[]>("/ocr/jobs"),
+  reocr: (id: number, rotate: number | null) =>
+    request<Job>(`/ocr/jobs/${id}/reocr`, {
+      method: "POST",
+      body: JSON.stringify({ rotate }),
+    }),
+  cancelJob: (id: number) =>
+    request<void>(`/ocr/jobs/${id}/cancel`, { method: "POST" }),
+  deleteJob: (id: number) =>
+    request<void>(`/ocr/jobs/${id}`, { method: "DELETE" }),
 
   // Stats
   summary: (params: Record<string, string> = {}) => {

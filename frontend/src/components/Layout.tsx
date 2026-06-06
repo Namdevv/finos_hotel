@@ -5,6 +5,7 @@ import { ROLE_LABEL, type Role } from "../types";
 import {
   IconCamera,
   IconDashboard,
+  IconHistory,
   IconLogout,
   IconReceipt,
   IconUsers,
@@ -20,6 +21,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/", label: "Tổng quan", Icon: IconDashboard, roles: ["admin", "accountant"] },
   { to: "/capture", label: "Chụp sổ", Icon: IconCamera },
+  { to: "/uploads", label: "Lịch sử", Icon: IconHistory },
   { to: "/transactions", label: "Chứng từ", Icon: IconReceipt },
   { to: "/users", label: "Người dùng", Icon: IconUsers, roles: ["admin"] },
 ];
@@ -27,6 +29,7 @@ const NAV: NavItem[] = [
 const TITLES: Record<string, string> = {
   "/": "Tổng quan",
   "/capture": "Chụp / tải ảnh sổ",
+  "/uploads": "Lịch sử ảnh",
   "/transactions": "Chứng từ",
   "/users": "Người dùng",
 };

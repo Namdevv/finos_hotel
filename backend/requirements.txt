@@ -1,5 +1,6 @@
-# FinOS Hotel - Backend dependencies (tối ưu cho máy 4GB RAM, CPU-only)
-# Lưu ý: KHÔNG dùng torch/paddlepaddle. OCR chạy qua ONNX Runtime cho nhẹ RAM.
+# FinOS Hotel - Backend dependencies
+# OCR thực hiện ở Ollama (VLM, ngoài tiến trình) nên backend rất nhẹ:
+# KHÔNG cần torch/paddle/onnx/opencv. Chỉ gọi HTTP + xử lý ảnh bằng Pillow.
 
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
@@ -11,11 +12,5 @@ pydantic-settings==2.7.1
 PyJWT==2.10.1                   # JWT bearer token (nhẹ hơn python-jose)
 argon2-cffi==23.1.0             # hash mật khẩu
 
-# OCR / xử lý ảnh (CPU, nhẹ)
-rapidocr-onnxruntime==1.4.4     # PaddleOCR PP-OCR chạy trên ONNX Runtime (không cần paddle/torch)
-opencv-python-headless==4.10.0.84
-numpy==1.26.4
+# Xử lý ảnh trước khi gửi VLM (xoay đúng chiều + thu nhỏ)
 Pillow==11.0.0
-
-# Tiện ích
-psutil==6.1.1                   # đo RAM peak trong POC + giám sát runtime
