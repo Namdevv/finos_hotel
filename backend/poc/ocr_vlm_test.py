@@ -33,7 +33,7 @@ from app.ocr.pipeline import _ledger_amount  # noqa: E402 — dùng chung quy ư
 
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 DEFAULT_HOST = "http://localhost:11434"
-DEFAULT_MODEL = "qwen2.5vl:7b"
+DEFAULT_MODEL = "gemma4:31b-cloud"
 
 PROMPT = """Đây là ảnh một trang SỔ GHI TAY của khách sạn, dạng bảng kẻ cột.
 Các cột từ trái sang phải: NGÀY, PHÒNG, GIỜ VÀO, GIỜ RA, KHÁCH (giờ/ngày), PHỤ THU, GIẤY TỜ, TỔNG TIỀN.

@@ -4,7 +4,7 @@ import sqlite3
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 
 from ..config import get_settings
@@ -26,6 +26,7 @@ def _can_access(user: UserOut, owner_id: int) -> bool:
 @router.post("/upload", response_model=JobOut, status_code=status.HTTP_201_CREATED)
 async def upload_image(
     file: UploadFile = File(...),
+    rotate: int | None = Form(default=None),
     conn: sqlite3.Connection = Depends(get_connection),
     user: UserOut = Depends(get_current_user),
 ):
@@ -33,6 +34,8 @@ async def upload_image(
     ext = Path(file.filename or "").suffix.lower()
     if ext not in _ALLOWED_EXT:
         raise HTTPException(status_code=400, detail="Định dạng ảnh không hỗ trợ")
+    if rotate is not None and rotate not in _VALID_ROTATE:
+        raise HTTPException(status_code=400, detail="Góc xoay phải là 0/90/180/270")
 
     data = await file.read()
     if len(data) > settings.max_upload_mb * 1024 * 1024:
@@ -42,9 +45,10 @@ async def upload_image(
     dest = settings.upload_path / name
     dest.write_bytes(data)
 
+    # rotate=None -> để NULL, worker dùng FINOS_OCR_ROTATE mặc định.
     cur = conn.execute(
-        "INSERT INTO jobs (user_id, image_path, status) VALUES (?, ?, 'queued')",
-        (user.id, str(dest)),
+        "INSERT INTO jobs (user_id, image_path, status, rotate) VALUES (?, ?, 'queued', ?)",
+        (user.id, str(dest), rotate),
     )
     conn.commit()
     row = conn.execute("SELECT * FROM jobs WHERE id = ?", (cur.lastrowid,)).fetchone()

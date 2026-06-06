@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import re
 import urllib.request
 from typing import Callable, Optional
 
@@ -121,9 +122,36 @@ def extract_rows(
         on_stage("recognizing")
     response = _generate_streaming(b64, settings=settings, should_cancel=should_cancel)
 
-    try:
-        data = json.loads(response)
-    except json.JSONDecodeError:
+    data = _loads_lenient(response)
+    if data is None:
         return [], response
     rows = data if isinstance(data, list) else data.get("rows", [])
     return (rows if isinstance(rows, list) else []), response
+
+
+def _loads_lenient(text: str) -> Optional[object]:
+    """Parse JSON kể cả khi model bọc trong markdown hoặc kèm chữ thừa.
+
+    Model local (qwen2.5vl) tôn trọng format:"json" -> trả JSON thuần. Nhưng một
+    số model (vd qua Ollama Cloud) bỏ qua ràng buộc đó, bọc kết quả trong ```json
+    ... ``` hoặc thêm lời dẫn -> json.loads() nghiêm ngặt sẽ thất bại. Hàm này gỡ
+    fence rồi bóc khối {...} / [...] ngoài cùng. Trả None nếu vẫn không parse được.
+    """
+    s = text.strip()
+    # Gỡ rào markdown ```json ... ``` (hoặc ``` ... ```).
+    fence = re.search(r"```(?:json)?\s*(.*?)\s*```", s, re.DOTALL | re.IGNORECASE)
+    if fence:
+        s = fence.group(1).strip()
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    # Bóc khối {...} hoặc [...] đầu tiên -> cuối cùng (bỏ chữ dẫn/đuôi thừa).
+    for open_ch, close_ch in (("{", "}"), ("[", "]")):
+        start, end = s.find(open_ch), s.rfind(close_ch)
+        if 0 <= start < end:
+            try:
+                return json.loads(s[start : end + 1])
+            except json.JSONDecodeError:
+                continue
+    return None

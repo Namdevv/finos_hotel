@@ -2,13 +2,17 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { Button, Card } from "../components/ui";
-import { IconCamera, IconImage, IconSpark } from "../components/icons";
+import { IconCamera, IconImage, IconRotate, IconSpark } from "../components/icons";
+
+// Mặc định 90°: sổ thường chụp ngang nên cần xoay đứng (khớp FINOS_OCR_ROTATE).
+const DEFAULT_ROTATE = 90;
 
 export default function Capture() {
   const nav = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [rotate, setRotate] = useState(DEFAULT_ROTATE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -17,7 +21,12 @@ export default function Capture() {
     if (!f) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));
+    setRotate(DEFAULT_ROTATE);
     setError("");
+  }
+
+  function rotateMore() {
+    setRotate((r) => (r + 90) % 360);
   }
 
   async function upload() {
@@ -25,8 +34,8 @@ export default function Capture() {
     setBusy(true);
     setError("");
     try {
-      // Gửi ảnh gốc (không nén) để OCR nhận đúng nguyên mẫu.
-      const job = await api.uploadImage(file);
+      // Gửi ảnh gốc (không nén) để OCR nhận đúng nguyên mẫu; kèm góc xoay đã chọn.
+      const job = await api.uploadImage(file, rotate);
       nav(`/review/${job.id}`);
     } catch (err) {
       setError((err as Error).message || "Tải ảnh thất bại");
@@ -57,7 +66,26 @@ export default function Capture() {
         />
 
         {preview ? (
-          <img src={preview} alt="Xem trước ảnh sổ" className="mb-4 max-h-96 w-full rounded-xl border border-slate-200 object-contain" />
+          <>
+            <div className="mb-3 flex max-h-96 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+              <img
+                src={preview}
+                alt="Xem trước ảnh sổ"
+                // Xem trước đúng chiều VLM sẽ nhận (PIL xoay ngược chiều kim đồng hồ).
+                style={{ transform: `rotate(${-rotate}deg)` }}
+                className="max-h-96 w-full object-contain transition-transform duration-200"
+              />
+            </div>
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+              <span className="text-xs text-slate-500">
+                Xoay ảnh cho <b className="text-slate-700">chữ thẳng đứng</b> rồi mới OCR · {rotate}°
+              </span>
+              <Button variant="secondary" size="sm" onClick={rotateMore}>
+                <IconRotate className="h-4 w-4" />
+                Xoay 90°
+              </Button>
+            </div>
+          </>
         ) : (
           <button
             onClick={() => inputRef.current?.click()}
