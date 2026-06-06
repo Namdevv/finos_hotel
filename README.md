@@ -1,114 +1,153 @@
 <p align="center">
-  <img src="frontend/public/logo_finos.png" alt="FinOS Hotel" width="180" />
+  <img src="frontend/public/logo_finos.png" alt="FinOS Hotel" width="160" />
 </p>
 
-# FinOS Hotel
+<h1 align="center">FinOS Hotel</h1>
 
-## Demo
+<p align="center">
+  <em>Số hóa sổ thu–chi viết tay của khách sạn bằng AI — chụp ảnh, OCR đọc số liệu, con người duyệt, lưu thành chứng từ kế toán.</em>
+</p>
+
+<p align="center">
+  <a href="#-tính-năng-chính">Tính năng</a> ·
+  <a href="#-luồng-hoạt-động">Workflow</a> ·
+  <a href="#-kiến-trúc">Kiến trúc</a> ·
+  <a href="#-công-nghệ">Công nghệ</a> ·
+  <a href="#-liên-hệ">Liên hệ</a>
+</p>
+
+<p align="center">
+  <img alt="Backend" src="https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white" />
+  <img alt="Frontend" src="https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?logo=react&logoColor=black" />
+  <img alt="OCR" src="https://img.shields.io/badge/OCR-Gemma4%2031B%20%2F%20Ollama-FF6F00" />
+  <img alt="Database" src="https://img.shields.io/badge/DB-SQLite%20(WAL)-003B57?logo=sqlite&logoColor=white" />
+  <img alt="Deploy" src="https://img.shields.io/badge/Deploy-Docker-2496ED?logo=docker&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-green" />
+</p>
+
+
+## 🎬 Demo
 
 ![FinOS Hotel demo](docs/demo/finos-hotel-demo.gif)
 
-[Xem bản video WebM rõ hơn](docs/demo/finos-hotel-demo.webm)
+> 📺 [Xem bản video WebM chất lượng cao hơn](docs/demo/finos-hotel-demo.webm)
 
-FinOS Hotel là ứng dụng nội bộ giúp khách sạn số hóa sổ thu chi viết tay. Thay vì nhập lại từng dòng từ sổ giấy, nhân viên có thể chụp ảnh trang sổ, hệ thống dùng OCR/AI để đọc dữ liệu, sau đó người dùng kiểm tra và chỉnh lại trước khi lưu thành chứng từ kế toán.
 
-Nguyên tắc chính của dự án: **AI chỉ hỗ trợ nhập liệu, không tự ghi thẳng vào sổ kế toán**. Mọi dòng OCR đều phải được con người duyệt lại trước khi lưu.
+## 📖 Giới thiệu
 
-## Dự án giải quyết việc gì?
+**FinOS Hotel** là ứng dụng nội bộ giúp khách sạn số hóa sổ thu–chi viết tay. Thay vì gõ lại từng dòng từ sổ giấy, nhân viên chỉ cần **chụp ảnh trang sổ**; hệ thống dùng mô hình thị giác (VLM) để đọc dữ liệu, rồi người dùng **kiểm tra, chỉnh sửa và xác nhận** trước khi lưu thành chứng từ kế toán.
 
-- Chụp hoặc tải ảnh trang sổ khách sạn từ điện thoại/máy tính.
-- Nhận dạng các dòng thu/chi từ ảnh sổ viết tay.
-- Cho người dùng xem lại ảnh gốc song song với kết quả OCR.
-- Sửa ngày, phòng/khách, nội dung, loại giao dịch và số tiền trước khi lưu.
-- Lưu chứng từ đã duyệt vào hệ thống.
-- Xem danh sách chứng từ, chỉnh sửa, xóa theo quyền.
-- Thống kê tổng thu, tổng chi, chênh lệch theo ngày hoặc theo tháng.
-- Quản lý người dùng và phân quyền nội bộ.
+Dự án được thiết kế để **chạy trên phần cứng yếu (4GB RAM, không cần GPU ở máy chủ web) và self-host trong mạng LAN** — hoàn toàn offline, không phụ thuộc dịch vụ ngoài.
 
-## Luồng hoạt động
+> ### 🔒 Nguyên tắc bất biến
+> **OCR chỉ *điền sẵn* biểu mẫu — không bao giờ tự ghi thẳng vào sổ kế toán.**
+> Chữ viết tay không đủ tin cậy. Pipeline trả về *các dòng đề xuất* kèm độ tin cậy từng trường; bảng `transactions` **chỉ chứa dữ liệu đã được con người phê duyệt**.
 
-1. Nhân viên đăng nhập vào hệ thống.
-2. Vào màn hình chụp ảnh, chụp trang sổ hoặc chọn ảnh có sẵn.
-3. Hệ thống tạo một job OCR và đưa vào hàng đợi xử lý.
-4. Worker gửi ảnh sang Ollama để model Qwen2.5-VL đọc nội dung.
-5. Kết quả OCR được tách thành các dòng giao dịch đề xuất.
-6. Người dùng vào màn hình duyệt, so sánh ảnh gốc với từng dòng được đọc ra.
-7. Người dùng sửa sai nếu có, thêm/xóa dòng nếu cần.
-8. Khi bấm lưu, các dòng đã duyệt mới trở thành chứng từ chính thức.
-9. Dashboard và báo cáo lấy dữ liệu từ các chứng từ đã lưu.
 
-Nếu ảnh bị xoay sai hoặc OCR đọc thiếu dòng, người dùng có thể chạy OCR lại với góc xoay khác.
+## ✨ Tính năng chính
 
-## Các vai trò trong hệ thống
+| | Tính năng | Mô tả |
+|---|---|---|
+| 📸 | **Chụp & tải ảnh** | Mở camera điện thoại hoặc chọn ảnh có sẵn; xoay ảnh trước khi OCR. |
+| 🤖 | **OCR sổ viết tay** | Mô hình thị giác Gemma 3 đọc nguyên trang sổ, kể cả số tiền khoanh tròn. |
+| ✅ | **Duyệt song song ảnh gốc** | So sánh ảnh thật với từng dòng được đọc; sửa ngày, phòng, nội dung, số tiền. |
+| 🔄 | **OCR lại** | Chạy lại với góc xoay khác khi ảnh nghiêng/đọc thiếu dòng. |
+| 📚 | **Thư viện upload** | Xem lại lịch sử ảnh đã OCR, trạng thái job, chạy lại hoặc xóa. |
+| 📊 | **Dashboard & báo cáo** | Tổng thu, tổng chi, chênh lệch; biểu đồ theo ngày/tháng. |
+| 👥 | **Phân quyền (RBAC)** | 3 vai trò `admin` / `accountant` / `receptionist`, gác ở cả API lẫn UI. |
+| 🧾 | **Nhật ký hoạt động** | Theo dõi thao tác quan trọng trong hệ thống (admin). |
+| 📱 | **PWA cài đặt được** | Dùng như app trên điện thoại, hỗ trợ chụp ảnh trực tiếp. |
 
-- `admin`: toàn quyền, quản lý người dùng, xem báo cáo, xem nhật ký hoạt động và xóa dữ liệu.
-- `accountant`: nhập, duyệt, sửa chứng từ, xóa mềm chứng từ và xem báo cáo.
-- `receptionist`: chụp OCR, duyệt/lưu chứng từ, xem/sửa chứng từ; dashboard chỉ hiển thị tổng trong ngày.
 
-Phân quyền được xử lý ở cả backend API và giao diện frontend.
 
-## Thành phần chính
+## 🔄 Luồng hoạt động
 
-| Thành phần | Vai trò |
-| --- | --- |
-| Frontend | Ứng dụng React/Vite dạng PWA, dùng được trên điện thoại để chụp ảnh và duyệt chứng từ. |
-| Backend | FastAPI cung cấp API đăng nhập, OCR job, chứng từ, thống kê, người dùng và nhật ký hoạt động. |
-| Database | SQLite lưu user, job OCR, chứng từ và activity log. |
-| OCR Worker | Worker nền xử lý hàng đợi OCR từng job một để tránh tranh tài nguyên GPU. |
-| Ollama/VLM | Chạy model Qwen2.5-VL để đọc ảnh sổ viết tay. Backend gọi qua HTTP. |
-| Docker | Đóng gói backend và frontend để chạy trong mạng LAN. |
+Từ trang sổ giấy đến chứng từ kế toán chỉ qua 4 bước — và **con người luôn là chốt chặn cuối**:
 
-## Cách dữ liệu được lưu
-
-- Ảnh upload được lưu trong thư mục dữ liệu của ứng dụng.
-- Mỗi ảnh tạo ra một OCR job, có trạng thái `queued`, `processing`, `done` hoặc `failed`.
-- Kết quả OCR chỉ là dữ liệu nháp gắn với job.
-- Chỉ khi người dùng bấm lưu ở màn hình duyệt, hệ thống mới tạo chứng từ trong bảng giao dịch.
-- Chứng từ có thể liên kết lại với ảnh/job OCR ban đầu để đối chiếu khi cần.
-
-## Giao diện chính
-
-- **Dashboard**: xem tổng thu, tổng chi, chênh lệch và biểu đồ theo ngày/tháng.
-- **Chụp ảnh**: mở camera hoặc chọn ảnh từ album, xoay ảnh trước khi OCR.
-- **Duyệt OCR**: xem ảnh gốc, kiểm tra từng dòng, sửa số tiền/ngày/phòng/nội dung rồi lưu.
-- **Chứng từ**: tra cứu, lọc, thêm/sửa/xóa giao dịch đã duyệt.
-- **Lịch sử upload**: xem lại các ảnh đã OCR, trạng thái job, chạy OCR lại hoặc xóa lịch sử.
-- **Người dùng**: admin quản lý tài khoản và vai trò.
-- **Hồ sơ**: đổi thông tin cá nhân/mật khẩu.
-
-## Triển khai ở mức tổng quan
-
-Dự án được thiết kế để self-host trong mạng LAN của khách sạn. Một máy chạy ứng dụng web và database; phần OCR dùng Ollama, nên tốt nhất đặt trên máy có GPU.
-
-Thông thường chỉ cần:
-
-```bash
-docker compose up -d --build
+```mermaid
+flowchart LR
+    A["📸 Chụp ảnh<br/>trang sổ"] --> B["🤖 AI đọc số liệu<br/>(OCR/VLM)"]
+    B --> C["✅ Người dùng duyệt<br/>& chỉnh sửa"]
+    C --> D["🧾 Lưu thành<br/>chứng từ"]
+    D --> E["📊 Báo cáo<br/>thu · chi · lãi"]
 ```
 
-Ứng dụng sau đó được truy cập từ các thiết bị cùng mạng qua địa chỉ máy chạy server, ví dụ `http://<IP-may-chu>:8000`.
+1. **Chụp** — nhân viên chụp hoặc tải ảnh trang sổ từ điện thoại/máy tính.
+2. **Đọc** — mô hình thị giác đọc cả trang, tách thành các dòng giao dịch *đề xuất* kèm độ tin cậy.
+3. **Duyệt** — người dùng xem ảnh gốc song song với kết quả, sửa ngày/phòng/nội dung/số tiền, thêm hoặc bớt dòng. Ảnh nghiêng có thể OCR lại với góc xoay khác.
+4. **Lưu & báo cáo** — chỉ dòng đã duyệt mới trở thành chứng từ chính thức; dashboard & báo cáo lấy số liệu từ đây.
 
-Chi tiết biến môi trường, model OCR, tài khoản admin ban đầu và cấu hình máy chạy thật nằm trong `.env.example`, `docker-compose.yml` và mã nguồn backend. README này chỉ giữ phần mô tả tổng quan để dễ nắm dự án.
+> 🔒 **AI chỉ điền sẵn — không tự ghi sổ.** Chữ viết tay không đủ tin cậy, nên bước duyệt của con người là bắt buộc.
 
-## Cấu trúc thư mục
 
-```text
-finos_hotel/
-├─ backend/      # FastAPI, database, routers, OCR worker
-├─ frontend/     # React/Vite PWA
-├─ Dockerfile    # Build backend + frontend thành một image
-├─ docker-compose.yml
-├─ COLORS.md     # Quy chuẩn màu và giao diện
-└─ README.md
+
+## 🏗 Kiến trúc
+
+**Một tiến trình FastAPI duy nhất, không dịch vụ ngoài** — không Redis/Celery/Postgres, hàng đợi job chính là một bảng SQLite. Toàn bộ chạy offline trong mạng LAN.
+
+```mermaid
+flowchart LR
+    subgraph Client["📱 Thiết bị trong LAN"]
+        UI["React PWA<br/>(chụp · duyệt · báo cáo)"]
+    end
+
+    subgraph Server["🖥 Máy chủ FastAPI (CPU, 4GB RAM)"]
+        API["REST API"]
+        Worker["OCR Worker<br/>(hàng đợi 1 thread)"]
+        DB[("SQLite · WAL")]
+    end
+
+    subgraph GPU["⚡ Máy có GPU"]
+        Ollama["Ollama<br/>Gemma 3 27B"]
+    end
+
+    UI -- "/api" --> API
+    API <--> DB
+    Worker -- "poll job" --> DB
+    Worker -- "ảnh gốc" --> Ollama
+    Ollama -- "JSON" --> Worker
 ```
 
-## Ghi chú vận hành
+- **Backend siêu nhẹ** — chỉ gọi HTTP + xử lý ảnh bằng Pillow, không torch/onnx/opencv. OCR nặng được tách ra Ollama trên máy có GPU.
+- **Vì sao dùng VLM?** Sổ viết tay có tổng tiền *khoanh tròn* — OCR cổ điển bỏ sót cả cột số tiền; mô hình thị giác đọc cả trang một cách toàn cục.
+- **Concurrency cố tình bằng 1** — không bao giờ xử lý hai ảnh cùng lúc, để chạy được trên phần cứng yếu.
 
-- OCR chữ viết tay không đảm bảo đúng tuyệt đối, nên bước duyệt là bắt buộc.
-- Ảnh càng rõ, đủ sáng, ít nghiêng thì OCR càng ổn định.
-- Dữ liệu kế toán nên được sao lưu định kỳ.
-- Khi dùng thật cần đổi khóa bảo mật và mật khẩu admin mặc định trong cấu hình môi trường.
 
-## Giấy phép
 
-Dự án được phát hành theo giấy phép [MIT](LICENSE).
+## 🧰 Công nghệ
+
+| Lớp | Công nghệ |
+|---|---|
+| **Frontend** | React 18 · Vite 5 · TypeScript · Tailwind CSS · React Router · Recharts · PWA |
+| **Backend** | FastAPI · Pydantic v2 · Uvicorn · Pillow |
+| **Auth** | JWT (HS256, PyJWT) · Argon2 (argon2-cffi) |
+| **Database** | SQLite (WAL mode, `busy_timeout=30s`) — tiền lưu dạng số nguyên VND |
+| **OCR / AI** | Ollama + Gemma 3 27B (vision, `format:"json"`, `temperature:0`) |
+| **Đóng gói** | Docker — một image phục vụ cả API và UI từ cổng 8000 |
+
+
+
+## 👥 Vai trò & phân quyền
+
+| Vai trò | Quyền |
+|---|---|
+| `admin` | Toàn quyền · quản lý người dùng · báo cáo · nhật ký hoạt động · xóa dữ liệu. |
+| `accountant` | Nhập / duyệt / sửa chứng từ · xóa mềm · xem báo cáo. |
+| `receptionist` (lễ tân) | Chụp & OCR · tạo/xem/sửa chứng từ (không xóa) · dashboard chỉ tổng trong ngày · chỉ thấy job OCR của mình. |
+
+> 🚀 Dự án được đóng gói bằng **Docker**, self-host trong mạng LAN của khách sạn, chạy hoàn toàn offline.
+
+
+## 📬 Liên hệ
+
+README này chỉ giới thiệu tổng quan về dự án. **Nếu bạn quan tâm** đến chi tiết kỹ thuật, hướng dẫn cài đặt/triển khai, hay muốn dùng thử — cứ nhắn cho mình nhé:
+
+- 📧 **Email:** namtran34311@gmail.com
+
+
+
+## 📄 Giấy phép
+
+Phát hành theo giấy phép [MIT](LICENSE).
+
+<p align="center"><sub>Made with ☕ for small hotels · 100% self-hosted · offline-first</sub></p>

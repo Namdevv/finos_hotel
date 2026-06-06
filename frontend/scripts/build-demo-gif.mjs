@@ -33,7 +33,7 @@ for (const frame of frames) {
 mkdirSync(dirname(outPath), { recursive: true });
 
 const encoder = new GIFEncoder(width, height, "neuquant", true);
-encoder.setDelay(Number(process.env.DEMO_GIF_DELAY_MS ?? 900));
+encoder.setDelay(Number(process.env.DEMO_GIF_DELAY_MS ?? 1300));
 encoder.setQuality(Number(process.env.DEMO_GIF_QUALITY ?? 16));
 encoder.setRepeat(0);
 encoder.start();
