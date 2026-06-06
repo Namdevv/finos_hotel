@@ -8,6 +8,7 @@ import type { Role } from "./types";
 import Capture from "./pages/Capture";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import Profile from "./pages/Profile";
 import Review from "./pages/Review";
 import Transactions from "./pages/Transactions";
 import Uploads from "./pages/Uploads";
@@ -46,6 +47,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/uploads" element={<Uploads />} />
             <Route path="/review/:jobId" element={<Review />} />
             <Route path="/transactions" element={<Transactions />} />
+            <Route path="/profile" element={<Profile />} />
             <Route
               path="/users"
               element={

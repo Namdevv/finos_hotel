@@ -42,6 +42,13 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class ProfileUpdate(BaseModel):
+    """Người dùng tự sửa hồ sơ của CHÍNH MÌNH (không đổi được vai trò)."""
+    full_name: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = Field(default=None, min_length=6)
+
+
 # ----- Transactions -----
 class TransactionBase(BaseModel):
     txn_date: str = Field(description="YYYY-MM-DD")

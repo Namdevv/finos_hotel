@@ -134,3 +134,46 @@ export const IconRefresh = (p: P) => (
     <path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6" />
   </svg>
 );
+
+// Xoay theo chiều kim đồng hồ (rotate-cw)
+export const IconRotate = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" />
+  </svg>
+);
+
+export const IconUser = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+
+// Bút chì — sửa (edit / pencil)
+export const IconPencil = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+  </svg>
+);
+
+// Khiên — phân quyền (shield)
+export const IconShield = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+  </svg>
+);
+
+// Chìa khóa — đổi mật khẩu (key)
+export const IconKey = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="7.5" cy="15.5" r="4.5" />
+    <path d="m10.7 12.3 8.3-8.3M16 5l3 3M14 7l3 3" />
+  </svg>
+);
+
+export const IconChevronRight = (p: P) => (
+  <svg {...base(p)}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
