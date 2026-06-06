@@ -29,6 +29,8 @@ backend/poc/*.png
 node_modules/
 frontend/dist/
 frontend/dev-dist/
+frontend/playwright-report/
+frontend/test-results/
 *.local
 
 # Build artifacts do tsc -b sinh ra (vite.config.ts -> .js/.d.ts)

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#faf7ef"/>
+  <rect x="70" y="60" width="1060" height="780" rx="18" fill="#fffdf8" stroke="#d8c9a8" stroke-width="4"/>
+  <text x="600" y="118" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#2f2a1d">SO THU CHI KHACH SAN</text>
+  <text x="100" y="168" font-family="Arial, sans-serif" font-size="26" fill="#7a6b4e">Ngay: 06/06/2026</text>
+  <g font-family="Arial, sans-serif" font-size="25" fill="#2f2a1d">
+    <rect x="100" y="210" width="1000" height="58" fill="#efe7d2"/>
+    <text x="125" y="248" font-weight="700">Ngay</text>
+    <text x="285" y="248" font-weight="700">Phong / khach</text>
+    <text x="560" y="248" font-weight="700">Noi dung</text>
+    <text x="940" y="248" font-weight="700">Tien</text>
+    <g stroke="#d8c9a8" stroke-width="3">
+      <line x1="100" y1="270" x2="1100" y2="270"/>
+      <line x1="100" y1="335" x2="1100" y2="335"/>
+      <line x1="100" y1="400" x2="1100" y2="400"/>
+      <line x1="100" y1="465" x2="1100" y2="465"/>
+      <line x1="100" y1="530" x2="1100" y2="530"/>
+      <line x1="245" y1="210" x2="245" y2="530"/>
+      <line x1="520" y1="210" x2="520" y2="530"/>
+      <line x1="885" y1="210" x2="885" y2="530"/>
+    </g>
+    <text x="125" y="312">06/06</text>
+    <text x="285" y="312">P203 - Anh Nam</text>
+    <text x="560" y="312">Tien phong 2 dem</text>
+    <text x="930" y="312">1.250.000</text>
+    <text x="125" y="377">06/06</text>
+    <text x="285" y="377">P101</text>
+    <text x="560" y="377">Nuoc uong minibar</text>
+    <text x="955" y="377">85.000</text>
+    <text x="125" y="442">06/06</text>
+    <text x="285" y="442">Bep</text>
+    <text x="560" y="442">Mua rau sang</text>
+    <text x="940" y="442">320.000</text>
+    <text x="125" y="507">06/06</text>
+    <text x="285" y="507">P305</text>
+    <text x="560" y="507">Phu thu giat la</text>
+    <text x="940" y="507">120.000</text>
+  </g>
+  <g fill="none" stroke="#3c7dd9" stroke-width="5" opacity="0.58">
+    <path d="M912 296c32-22 92-14 110 14 19 30-19 52-66 48-47-3-71-32-44-62Z"/>
+    <path d="M930 428c38-20 94-12 107 18 14 32-24 54-72 48-45-5-64-39-35-66Z"/>
+  </g>
+</svg>
