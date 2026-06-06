@@ -2,14 +2,14 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { Button, Card } from "../components/ui";
-import { IconCamera, IconImage, IconRotate, IconSpark } from "../components/icons";
+import { IconImage, IconCamera, IconRotate, IconSpark } from "../components/icons";
 
-// Mặc định 90°: sổ thường chụp ngang nên cần xoay đứng (khớp FINOS_OCR_ROTATE).
 const DEFAULT_ROTATE = 90;
 
 export default function Capture() {
   const nav = useNavigate();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [rotate, setRotate] = useState(DEFAULT_ROTATE);
@@ -19,6 +19,8 @@ export default function Capture() {
   function pick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    // reset value để chọn cùng file lần 2 vẫn kích hoạt onChange
+    e.target.value = "";
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setRotate(DEFAULT_ROTATE);
@@ -34,7 +36,6 @@ export default function Capture() {
     setBusy(true);
     setError("");
     try {
-      // Gửi ảnh gốc (không nén) để OCR nhận đúng nguyên mẫu; kèm góc xoay đã chọn.
       const job = await api.uploadImage(file, rotate);
       nav(`/review/${job.id}`);
     } catch (err) {
@@ -56,11 +57,20 @@ export default function Capture() {
       </Card>
 
       <Card>
+        {/* Input mở camera trực tiếp */}
         <input
-          ref={inputRef}
+          ref={cameraRef}
           type="file"
           accept="image/*"
           capture="environment"
+          className="hidden"
+          onChange={pick}
+        />
+        {/* Input chọn từ album (không có capture) */}
+        <input
+          ref={galleryRef}
+          type="file"
+          accept="image/*"
           className="hidden"
           onChange={pick}
         />
@@ -71,7 +81,6 @@ export default function Capture() {
               <img
                 src={preview}
                 alt="Xem trước ảnh sổ"
-                // Xem trước đúng chiều VLM sẽ nhận (PIL xoay ngược chiều kim đồng hồ).
                 style={{ transform: `rotate(${-rotate}deg)` }}
                 className="max-h-96 w-full object-contain transition-transform duration-200"
               />
@@ -88,13 +97,13 @@ export default function Capture() {
           </>
         ) : (
           <button
-            onClick={() => inputRef.current?.click()}
+            onClick={() => cameraRef.current?.click()}
             className="flex h-64 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 text-slate-400 transition-colors hover:border-brand-400 hover:bg-brand-50/40 hover:text-brand-500"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <IconImage className="h-7 w-7" />
+              <IconCamera className="h-7 w-7" />
             </span>
-            <span className="text-sm font-semibold">Bấm để chụp hoặc chọn ảnh sổ</span>
+            <span className="text-sm font-semibold">Bấm để mở máy ảnh</span>
             <span className="text-xs">JPG, PNG · tối đa 12MB</span>
           </button>
         )}
@@ -105,13 +114,13 @@ export default function Capture() {
           </div>
         )}
 
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={() => inputRef.current?.click()} className="flex-1">
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => galleryRef.current?.click()} className="flex-1">
             <IconImage className="h-4 w-4" />
-            {preview ? "Chọn ảnh khác" : "Chọn ảnh"}
+            Từ album
           </Button>
-          <Button onClick={upload} disabled={!file || busy} className="flex-1">
-            <IconCamera className="h-4 w-4" />
+          <Button size="sm" onClick={upload} disabled={!file || busy} className="flex-1">
+            <IconSpark className="h-4 w-4" />
             {busy ? "Đang xử lý…" : "OCR & duyệt"}
           </Button>
         </div>

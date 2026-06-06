@@ -136,6 +136,10 @@ class ReocrRequest(BaseModel):
     rotate: Optional[int] = None  # góc xoay mới (0/90/180/270); None = giữ mặc định
 
 
+class BulkDeleteRequest(BaseModel):
+    ids: list[int]
+
+
 # ----- Stats -----
 class StatsSummary(BaseModel):
     total_income: int
