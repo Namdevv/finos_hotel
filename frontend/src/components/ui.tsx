@@ -134,14 +134,14 @@ export function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-x-0 top-0 z-50 flex h-[100dvh] items-end justify-center bg-slate-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="max-h-[92vh] w-full max-w-md animate-fade-in overflow-y-auto rounded-t-2xl bg-white shadow-pop sm:rounded-2xl"
+        className="max-h-[92dvh] w-full max-w-md animate-fade-in overflow-y-auto rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-pop sm:rounded-2xl sm:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
