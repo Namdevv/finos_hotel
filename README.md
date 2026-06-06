@@ -12,6 +12,7 @@
   <a href="#-tính-năng-chính">Tính năng</a> ·
   <a href="#-luồng-hoạt-động">Workflow</a> ·
   <a href="#-kiến-trúc">Kiến trúc</a> ·
+  <a href="#-chạy-với-docker">Cài đặt</a> ·
   <a href="#-công-nghệ">Công nghệ</a> ·
   <a href="#-liên-hệ">Liên hệ</a>
 </p>
@@ -37,7 +38,7 @@
 
 **FinOS Hotel** là ứng dụng nội bộ giúp khách sạn số hóa sổ thu–chi viết tay. Thay vì gõ lại từng dòng từ sổ giấy, nhân viên chỉ cần **chụp ảnh trang sổ**; hệ thống dùng mô hình thị giác (VLM) để đọc dữ liệu, rồi người dùng **kiểm tra, chỉnh sửa và xác nhận** trước khi lưu thành chứng từ kế toán.
 
-Dự án được thiết kế để **chạy trên phần cứng yếu (4GB RAM, không cần GPU ở máy chủ web) và self-host trong mạng LAN** — hoàn toàn offline, không phụ thuộc dịch vụ ngoài.
+Dự án được thiết kế để **self-host bằng Docker** trong LAN hoặc VPS. Phần OCR nặng (Ollama) chạy trên cloud **miễn phí** — không cần GPU hay đầu tư phần cứng riêng.
 
 > ### 🔒 Nguyên tắc bất biến
 > **OCR chỉ *điền sẵn* biểu mẫu — không bao giờ tự ghi thẳng vào sổ kế toán.**
@@ -91,27 +92,51 @@ flowchart LR
         UI["React PWA<br/>(chụp · duyệt · báo cáo)"]
     end
 
-    subgraph Server["🖥 Máy chủ FastAPI (CPU, 4GB RAM)"]
+    subgraph Server["🖥 Máy chủ FastAPI"]
         API["REST API"]
         Worker["OCR Worker<br/>(hàng đợi 1 thread)"]
         DB[("SQLite · WAL")]
     end
 
-    subgraph GPU["⚡ Máy có GPU"]
-        Ollama["Ollama<br/>Gemma 3 27B"]
+    subgraph Cloud["☁️ Cloud (Ollama — miễn phí)"]
+        Ollama["Ollama<br/>Gemma 4 31B"]
     end
 
     UI -- "/api" --> API
     API <--> DB
     Worker -- "poll job" --> DB
-    Worker -- "ảnh gốc" --> Ollama
+    Worker -- "ảnh gốc (HTTPS)" --> Ollama
     Ollama -- "JSON" --> Worker
 ```
 
-- **Backend siêu nhẹ** — chỉ gọi HTTP + xử lý ảnh bằng Pillow, không torch/onnx/opencv. OCR nặng được tách ra Ollama trên máy có GPU.
+- **Backend siêu nhẹ** — chỉ gọi HTTP + xử lý ảnh bằng Pillow, không torch/onnx/opencv. OCR nặng được tách hoàn toàn ra Ollama chạy trên cloud (miễn phí).
 - **Vì sao dùng VLM?** Sổ viết tay có tổng tiền *khoanh tròn* — OCR cổ điển bỏ sót cả cột số tiền; mô hình thị giác đọc cả trang một cách toàn cục.
-- **Concurrency cố tình bằng 1** — không bao giờ xử lý hai ảnh cùng lúc, để chạy được trên phần cứng yếu.
+- **Concurrency cố tình bằng 1** — không bao giờ xử lý hai ảnh cùng lúc, tránh quá tải.
 
+
+
+## 🐳 Chạy với Docker
+
+> Đây là cách triển khai được khuyến nghị — một lệnh dựng cả API lẫn UI.
+
+**Yêu cầu:** Docker + Docker Compose đã cài, và một instance Ollama đang chạy (trên cloud hoặc máy local).
+
+```bash
+# 1. Sao chép file cấu hình
+cp .env.example .env
+
+# 2. Mở .env, đổi hai giá trị bắt buộc:
+#    FINOS_SECRET_KEY   — chuỗi ngẫu nhiên, giữ bí mật
+#    FINOS_ADMIN_PASSWORD — mật khẩu tài khoản admin
+#    FINOS_OLLAMA_HOST  — địa chỉ Ollama (ví dụ: https://your-ollama.cloud)
+
+# 3. Build và chạy
+docker compose up -d --build
+```
+
+Sau khi khởi động, truy cập **`http://localhost:8000`** (hoặc IP máy chủ nếu dùng trong LAN).
+
+> Dữ liệu (DB + ảnh upload) được lưu vào Docker volume `finos_data` — bền vững qua các lần rebuild.
 
 
 ## 🧰 Công nghệ
@@ -122,7 +147,7 @@ flowchart LR
 | **Backend** | FastAPI · Pydantic v2 · Uvicorn · Pillow |
 | **Auth** | JWT (HS256, PyJWT) · Argon2 (argon2-cffi) |
 | **Database** | SQLite (WAL mode, `busy_timeout=30s`) — tiền lưu dạng số nguyên VND |
-| **OCR / AI** | Ollama + Gemma 3 27B (vision, `format:"json"`, `temperature:0`) |
+| **OCR / AI** | Ollama + Gemma 4 31B (vision, `format:"json"`, `temperature:0`) — chạy trên cloud miễn phí |
 | **Đóng gói** | Docker — một image phục vụ cả API và UI từ cổng 8000 |
 
 
@@ -135,7 +160,7 @@ flowchart LR
 | `accountant` | Nhập / duyệt / sửa chứng từ · xóa mềm · xem báo cáo. |
 | `receptionist` (lễ tân) | Chụp & OCR · tạo/xem/sửa chứng từ (không xóa) · dashboard chỉ tổng trong ngày · chỉ thấy job OCR của mình. |
 
-> 🚀 Dự án được đóng gói bằng **Docker**, self-host trong mạng LAN của khách sạn, chạy hoàn toàn offline.
+> 🚀 Dự án được đóng gói bằng **Docker** — triển khai trong LAN hoặc VPS, OCR chạy miễn phí trên cloud.
 
 
 ## 📬 Liên hệ
@@ -150,4 +175,4 @@ README này chỉ giới thiệu tổng quan về dự án. **Nếu bạn quan t
 
 Phát hành theo giấy phép [MIT](LICENSE).
 
-<p align="center"><sub>Made with ☕ for small hotels · 100% self-hosted · offline-first</sub></p>
+<p align="center"><sub>Made with ☕ for small hotels · self-hosted · cloud OCR miễn phí</sub></p>
