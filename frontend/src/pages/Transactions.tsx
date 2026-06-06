@@ -148,7 +148,7 @@ export default function Transactions() {
           <div className="relative">
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="field" />
             {!from && (
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">
+              <span className="pointer-events-none absolute inset-y-0 left-3 hidden items-center text-sm text-slate-400 [@media(pointer:coarse)]:flex">
                 dd/mm/yyyy
               </span>
             )}
@@ -159,7 +159,7 @@ export default function Transactions() {
           <div className="relative">
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="field" />
             {!to && (
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400">
+              <span className="pointer-events-none absolute inset-y-0 left-3 hidden items-center text-sm text-slate-400 [@media(pointer:coarse)]:flex">
                 dd/mm/yyyy
               </span>
             )}
