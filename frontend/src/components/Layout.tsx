@@ -143,7 +143,7 @@ export default function Layout() {
       </div>
 
       {/* ===== Bottom nav (mobile) ===== */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         {mobileItems.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
