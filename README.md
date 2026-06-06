@@ -6,11 +6,9 @@
 
 ## Demo
 
-<video src="docs/demo/finos-hotel-demo.webm" controls muted width="100%">
-  Trình xem Markdown của bạn không hỗ trợ phát video trực tiếp.
-</video>
+![FinOS Hotel demo](docs/demo/finos-hotel-demo.gif)
 
-[Xem video demo](docs/demo/finos-hotel-demo.webm)
+[Xem bản video WebM rõ hơn](docs/demo/finos-hotel-demo.webm)
 
 FinOS Hotel là ứng dụng nội bộ giúp khách sạn số hóa sổ thu chi viết tay. Thay vì nhập lại từng dòng từ sổ giấy, nhân viên có thể chụp ảnh trang sổ, hệ thống dùng OCR/AI để đọc dữ liệu, sau đó người dùng kiểm tra và chỉnh lại trước khi lưu thành chứng từ kế toán.
 

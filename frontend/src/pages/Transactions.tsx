@@ -26,7 +26,7 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete?: () => vo
     <div ref={ref} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="cursor-pointer rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+        className="cursor-pointer rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
         title="Tuỳ chọn"
       >
         <IconDots className="h-4 w-4" />
@@ -35,14 +35,14 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete?: () => vo
         <div className="absolute right-0 top-8 z-20 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-pop">
           <button
             onClick={() => { setOpen(false); onEdit(); }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
           >
             <IconPencil className="h-3.5 w-3.5" /> Sửa
           </button>
           {onDelete && (
             <button
               onClick={() => { setOpen(false); onDelete(); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-rose-600 hover:bg-rose-50"
             >
               <IconTrash className="h-3.5 w-3.5" /> Xóa
             </button>

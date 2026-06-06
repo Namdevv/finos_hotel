@@ -100,38 +100,66 @@ export default function Activities() {
       ) : items.length === 0 ? (
         <Card className="py-12 text-center text-sm text-slate-500">Chưa có hoạt động nào.</Card>
       ) : (
-        <Card pad={false} className="overflow-hidden">
-          <table className="acc-table">
-            <thead>
-              <tr>
-                <th>Thời gian</th>
-                <th>Người thao tác</th>
-                <th>Vai trò</th>
-                <th>Thao tác</th>
-                <th>Đối tượng</th>
-                <th>Chi tiết</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td className="whitespace-nowrap text-slate-500">{fmtTime(item.created_at)}</td>
-                  <td>
-                    <div className="font-medium text-slate-800">{item.full_name || item.username || "Hệ thống"}</div>
-                    {item.username && <div className="text-xs text-slate-400">@{item.username}</div>}
-                  </td>
-                  <td>{item.role ? <Badge color="blue">{ROLE_LABEL[item.role]}</Badge> : <Badge>Không rõ</Badge>}</td>
-                  <td className="font-medium text-slate-700">{actionLabel(item.action)}</td>
-                  <td className="text-slate-500">
+        <>
+          {/* Bảng (desktop) */}
+          <Card pad={false} className="hidden overflow-x-auto md:block">
+            <table className="acc-table">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Người thao tác</th>
+                  <th>Vai trò</th>
+                  <th>Thao tác</th>
+                  <th>Đối tượng</th>
+                  <th>Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id}>
+                    <td className="whitespace-nowrap text-slate-500">{fmtTime(item.created_at)}</td>
+                    <td>
+                      <div className="font-medium text-slate-800">{item.full_name || item.username || "Hệ thống"}</div>
+                      {item.username && <div className="text-xs text-slate-400">@{item.username}</div>}
+                    </td>
+                    <td>{item.role ? <Badge color="blue">{ROLE_LABEL[item.role]}</Badge> : <Badge>Không rõ</Badge>}</td>
+                    <td className="font-medium text-slate-700">{actionLabel(item.action)}</td>
+                    <td className="text-slate-500">
+                      {item.target_type || "-"}
+                      {item.target_id ? ` #${item.target_id}` : ""}
+                    </td>
+                    <td className="max-w-sm truncate text-slate-500">{detailText(item.detail) || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+
+          {/* Thẻ (mobile) */}
+          <div className="space-y-2 md:hidden">
+            {items.map((item) => (
+              <Card key={item.id} className="space-y-1.5 !p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-slate-700">{actionLabel(item.action)}</span>
+                  <span className="shrink-0 text-xs text-slate-400">{fmtTime(item.created_at)}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                  <span className="font-medium text-slate-800">{item.full_name || item.username || "Hệ thống"}</span>
+                  {item.role ? <Badge color="blue">{ROLE_LABEL[item.role]}</Badge> : <Badge>Không rõ</Badge>}
+                </div>
+                {(item.target_type || item.target_id) && (
+                  <div className="text-xs text-slate-500">
                     {item.target_type || "-"}
                     {item.target_id ? ` #${item.target_id}` : ""}
-                  </td>
-                  <td className="max-w-sm truncate text-slate-500">{detailText(item.detail) || "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+                  </div>
+                )}
+                {detailText(item.detail) && (
+                  <div className="break-words text-xs text-slate-500">{detailText(item.detail)}</div>
+                )}
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

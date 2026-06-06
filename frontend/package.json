@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "e2e": "playwright test",
     "demo:video": "playwright test tests/demo-video.spec.ts --project=chromium",
+    "demo:gif": "node scripts/build-demo-gif.mjs",
     "demo:video:headed": "playwright test tests/demo-video.spec.ts --project=chromium --headed",
     "demo:video:report": "playwright show-report"
   },
@@ -25,6 +26,8 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
+    "gif-encoder-2": "^1.0.5",
+    "pngjs": "^7.0.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",

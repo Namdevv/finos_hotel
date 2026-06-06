@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 type Kind = "income" | "expense";
@@ -22,6 +23,8 @@ interface Transaction {
 
 const fixturePath = fileURLToPath(new URL("./fixtures/demo-ledger.svg", import.meta.url));
 const fixtureImage = readFileSync(fixturePath, "utf8");
+const framesDir = fileURLToPath(new URL("../test-results/demo-frames/", import.meta.url));
+let frameSeq = 0;
 
 const user = {
   id: 1,
@@ -224,11 +227,25 @@ async function pause(page: Page, ms = 900) {
   await page.waitForTimeout(ms);
 }
 
+async function snap(page: Page, label: string) {
+  frameSeq += 1;
+  await page.screenshot({
+    path: join(framesDir, `${String(frameSeq).padStart(2, "0")}-${label}.png`),
+    animations: "disabled",
+  });
+}
+
 test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) => {
+  frameSeq = 0;
+  rmSync(framesDir, { recursive: true, force: true });
+  mkdirSync(framesDir, { recursive: true });
+
   await mockApi(page);
+  await page.setViewportSize({ width: 960, height: 600 });
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Đăng nhập" })).toBeVisible();
+  await snap(page, "login");
   await pause(page);
 
   await page.getByLabel("Tên đăng nhập").fill("admin");
@@ -238,6 +255,7 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
 
   await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
   await expect(page.getByText("Số liệu tháng này")).toBeVisible();
+  await snap(page, "dashboard");
   await pause(page, 1_500);
 
   await page.getByRole("combobox").selectOption("month");
@@ -245,6 +263,7 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
 
   await page.getByRole("link", { name: /Chụp sổ/ }).click();
   await expect(page.getByRole("heading", { name: "Chụp / tải ảnh sổ" })).toBeVisible();
+  await snap(page, "capture");
   await pause(page, 1_000);
 
   const chooserPromise = page.waitForEvent("filechooser");
@@ -253,6 +272,7 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
   await chooser.setFiles(fixturePath);
 
   await expect(page.getByAltText("Xem trước ảnh sổ")).toBeVisible();
+  await snap(page, "preview");
   await pause(page, 1_300);
   await page.getByRole("button", { name: /Xoay 90/ }).click();
   await pause(page, 900);
@@ -261,9 +281,11 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Đang xử lý ảnh sổ" })).toBeVisible();
   await expect(page.getByText("Nhận dạng bằng AI")).toBeVisible();
   await expect(page.getByText("Tách dữ liệu")).toBeVisible();
+  await snap(page, "processing");
 
   await expect(page.getByText("Duyệt lại từng dòng trước khi lưu.")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByAltText("Ảnh sổ gốc")).toBeVisible();
+  await snap(page, "review");
   await pause(page, 1_600);
 
   await page.getByLabel("Phòng / khách").first().fill("P203 - Anh Nam");
@@ -280,6 +302,7 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
   await page.getByLabel("Phòng / khách").last().fill("P305");
   await page.getByLabel("Nội dung").last().fill("Phụ thu giặt là");
   await page.getByLabel(/Số tiền/).last().fill("120000");
+  await snap(page, "review-edited");
   await pause(page, 1_200);
 
   await page.getByRole("button", { name: /Lưu tất cả/ }).click();
@@ -287,15 +310,18 @@ test("quay video demo luồng OCR và duyệt chứng từ", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Chứng từ" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "P203 - Anh Nam" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Phụ thu giặt là" })).toBeVisible();
+  await snap(page, "transactions");
   await pause(page, 1_500);
 
   await page.getByLabel("Loại").selectOption("expense");
   await page.getByRole("button", { name: /Lọc/ }).click();
   await expect(page.getByRole("cell", { name: /Phụ thu giặt là/ })).toBeVisible();
+  await snap(page, "transactions-filtered");
   await pause(page, 1_500);
 
   await page.getByRole("link", { name: /Tổng quan/ }).click();
   await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
   await expect(page.getByText("Thu / Chi theo ngày")).toBeVisible();
+  await snap(page, "dashboard-final");
   await pause(page, 2_000);
 });

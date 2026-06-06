@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { Badge, Button, Card, Input, Modal } from "../components/ui";
 import {
+  IconActivity,
   IconChevronRight,
   IconHistory,
   IconKey,
@@ -104,6 +105,14 @@ export default function Profile() {
             desc="Thêm, khóa, đổi vai trò tài khoản"
             onClick={() => nav("/users")}
             disabled={!hasRole("admin")}
+          />
+        )}
+        {hasRole("admin") && (
+          <MenuRow
+            icon={<IconActivity className="h-[18px] w-[18px]" />}
+            label="Nhật ký hoạt động"
+            desc="Theo dõi thao tác của nhân viên, kế toán"
+            onClick={() => nav("/activities")}
           />
         )}
         <MenuRow

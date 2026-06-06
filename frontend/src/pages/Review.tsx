@@ -38,6 +38,7 @@ export default function Review() {
   const [error, setError] = useState("");
   const [elapsed, setElapsed] = useState(0);
   const [showReocr, setShowReocr] = useState(false);
+  const [zoom, setZoom] = useState(false);
   const [reocrNonce, setReocrNonce] = useState(0);
   const polling = useRef<number | null>(null);
 
@@ -214,7 +215,17 @@ export default function Review() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card pad={false} className="overflow-hidden lg:sticky lg:top-20 lg:self-start">
           {imgUrl ? (
-            <img src={imgUrl} alt="Ảnh sổ gốc" className="max-h-[72vh] w-full object-contain" />
+            <button
+              type="button"
+              onClick={() => setZoom(true)}
+              title="Bấm để phóng to"
+              className="relative block w-full cursor-zoom-in"
+            >
+              <img src={imgUrl} alt="Ảnh sổ gốc" className="max-h-[72vh] w-full object-contain" />
+              <span className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-slate-900/60 px-2 py-1 text-xs font-medium text-white">
+                Bấm để phóng to
+              </span>
+            </button>
           ) : (
             <Spinner />
           )}
@@ -278,6 +289,24 @@ export default function Review() {
           </Button>
         </Card>
       </div>
+
+      {zoom && imgUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 p-2"
+          onClick={() => setZoom(false)}
+        >
+          <img src={imgUrl} alt="Ảnh sổ gốc" className="max-h-full max-w-full object-contain" />
+          <button
+            onClick={() => setZoom(false)}
+            aria-label="Đóng"
+            className="absolute right-3 top-3 cursor-pointer rounded-full bg-white/10 p-2 text-white backdrop-blur transition-colors hover:bg-white/20"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

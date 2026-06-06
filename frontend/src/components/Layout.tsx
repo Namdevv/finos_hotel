@@ -138,11 +138,11 @@ export default function Layout() {
 
       <div className="flex min-h-screen flex-1 flex-col md:pl-64">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-8">
-          <div className="flex items-center gap-2">
-            <img src="/logo_finos.png" alt="FinOS Hotel" className="h-7 w-7 rounded-md object-cover md:hidden" />
-            <h1 className="text-base font-bold text-slate-900 md:text-lg">{title}</h1>
+          <div className="flex min-w-0 items-center gap-2">
+            <img src="/logo_finos.png" alt="FinOS Hotel" className="h-7 w-7 shrink-0 rounded-md object-cover md:hidden" />
+            <h1 className="truncate text-base font-bold text-slate-900 md:text-lg">{title}</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <span className="hidden text-sm text-slate-500 sm:inline">
               {user?.full_name || user?.username}
             </span>

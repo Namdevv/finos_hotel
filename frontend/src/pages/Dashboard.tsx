@@ -100,7 +100,7 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={series} margin={{ left: 4, right: 4, top: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
-                  <XAxis dataKey="period" fontSize={11} tickMargin={6} stroke="#94a3b8" />
+                  <XAxis dataKey="period" fontSize={11} tickMargin={6} stroke="#94a3b8" interval="preserveStartEnd" minTickGap={24} />
                   <YAxis fontSize={11} width={56} stroke="#94a3b8" tickFormatter={(v) => (v ? `${v / 1_000_000}tr` : "0")} />
                   <Tooltip
                     formatter={(v: number) => fmtVnd(v)}

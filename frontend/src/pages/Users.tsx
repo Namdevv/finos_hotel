@@ -81,47 +81,77 @@ export default function Users() {
       {users === null ? (
         <Spinner />
       ) : (
-        <Card pad={false} className="overflow-hidden">
-          <table className="acc-table">
-            <thead>
-              <tr>
-                <th>Người dùng</th>
-                <th>Vai trò</th>
-                <th>Trạng thái</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                        {initials(u)}
-                      </div>
-                      <div>
-                        <div className="font-medium text-slate-800">{u.full_name || u.username}</div>
-                        <div className="text-xs text-slate-400">@{u.username}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td><Badge color="blue">{ROLE_LABEL[u.role]}</Badge></td>
-                  <td>{u.is_active ? <Badge color="green">Hoạt động</Badge> : <Badge color="red">Đã khóa</Badge>}</td>
-                  <td className="num">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => toggleActive(u)} className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100">
-                        {u.is_active ? "Khóa" : "Mở khóa"}
-                      </button>
-                      <button onClick={() => del(u)} title="Xóa" className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                        <IconTrash className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+        <>
+          {/* Bảng (desktop) */}
+          <Card pad={false} className="hidden overflow-x-auto md:block">
+            <table className="acc-table">
+              <thead>
+                <tr>
+                  <th>Người dùng</th>
+                  <th>Vai trò</th>
+                  <th>Trạng thái</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                          {initials(u)}
+                        </div>
+                        <div>
+                          <div className="font-medium text-slate-800">{u.full_name || u.username}</div>
+                          <div className="text-xs text-slate-400">@{u.username}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><Badge color="blue">{ROLE_LABEL[u.role]}</Badge></td>
+                    <td>{u.is_active ? <Badge color="green">Hoạt động</Badge> : <Badge color="red">Đã khóa</Badge>}</td>
+                    <td className="num">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => toggleActive(u)} className="cursor-pointer rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100">
+                          {u.is_active ? "Khóa" : "Mở khóa"}
+                        </button>
+                        <button onClick={() => del(u)} title="Xóa" className="cursor-pointer rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                          <IconTrash className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+
+          {/* Thẻ (mobile) */}
+          <div className="space-y-2 md:hidden">
+            {users.map((u) => (
+              <Card key={u.id} className="flex items-center gap-3 !p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                  {initials(u)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium text-slate-800">{u.full_name || u.username}</div>
+                  <div className="truncate text-xs text-slate-400">@{u.username}</div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <Badge color="blue">{ROLE_LABEL[u.role]}</Badge>
+                    {u.is_active ? <Badge color="green">Hoạt động</Badge> : <Badge color="red">Đã khóa</Badge>}
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <button onClick={() => toggleActive(u)} className="cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100">
+                    {u.is_active ? "Khóa" : "Mở khóa"}
+                  </button>
+                  <button onClick={() => del(u)} title="Xóa" className="cursor-pointer rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
+                    <IconTrash className="h-4 w-4" />
+                  </button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

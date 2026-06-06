@@ -122,7 +122,7 @@ export default function Uploads() {
                       <button
                         onClick={(e) => onCancel(e, j.id)}
                         title="Ngưng"
-                        className="cursor-pointer rounded-md px-2 py-1 text-xs font-semibold text-amber-600 transition-colors hover:bg-amber-50"
+                        className="cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-semibold text-amber-600 transition-colors hover:bg-amber-50"
                       >
                         Ngưng
                       </button>
@@ -131,7 +131,7 @@ export default function Uploads() {
                         <button
                           onClick={(e) => onDelete(e, j.id)}
                           title="Xóa khỏi lịch sử"
-                          className="cursor-pointer rounded-md p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                          className="cursor-pointer rounded-md p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
                         >
                           <IconTrash className="h-4 w-4" />
                         </button>
