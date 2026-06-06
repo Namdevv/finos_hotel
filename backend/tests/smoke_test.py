@@ -64,8 +64,8 @@ def main():
         hr = {"Authorization": f"Bearer {rt['access_token']}"}
         check("lễ tân KHÔNG xem được /api/users (403)",
               c.get("/api/users", headers=hr).status_code == 403)
-        check("lễ tân KHÔNG xem được stats (403)",
-              c.get("/api/stats/summary", headers=hr).status_code == 403)
+        check("lễ tân xem được summary hôm nay",
+              c.get("/api/stats/summary", headers=hr).status_code == 200)
 
         print("== Transactions ==")
         c.post("/api/transactions", headers=h,

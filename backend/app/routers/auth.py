@@ -3,6 +3,7 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from ..audit import log_activity
 from ..database import get_connection
 from ..deps import get_current_user
 from ..models import LoginRequest, ProfileUpdate, TokenResponse, UserOut
@@ -26,6 +27,8 @@ def login(body: LoginRequest, conn: sqlite3.Connection = Depends(get_connection)
         role=row["role"], is_active=bool(row["is_active"]),
     )
     token = create_access_token(user_id=user.id, username=user.username, role=user.role)
+    log_activity(conn, user, "auth.login", target_type="user", target_id=user.id)
+    conn.commit()
     return TokenResponse(access_token=token, user=user)
 
 
@@ -60,6 +63,14 @@ def update_me(
     if fields:
         values.append(user.id)
         conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", values)
+        log_activity(
+            conn,
+            user,
+            "profile.update",
+            target_type="user",
+            target_id=user.id,
+            detail={"fields": [f.split(" = ")[0] for f in fields if " = " in f]},
+        )
         conn.commit()
 
     row = conn.execute(

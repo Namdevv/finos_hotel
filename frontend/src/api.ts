@@ -1,4 +1,5 @@
 import type {
+  Activity,
   Job,
   JobSummary,
   StatsBucket,
@@ -106,6 +107,11 @@ export const api = {
 
   // OCR — gửi ảnh GỐC (không nén) để giữ toàn vẹn cho VLM.
   // rotate: góc xoay khi upload (0/90/180/270); null = dùng mặc định cấu hình.
+  listActivities: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request<Activity[]>(`/activities${q ? `?${q}` : ""}`);
+  },
+
   uploadImage: (file: File, rotate: number | null = null) => {
     const fd = new FormData();
     fd.append("file", file, file.name || "capture.jpg");

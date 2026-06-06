@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 
+from ..audit import log_activity
 from ..config import get_settings
 from ..database import get_connection
 from ..deps import get_current_user, require_roles
@@ -49,6 +50,14 @@ async def upload_image(
     cur = conn.execute(
         "INSERT INTO jobs (user_id, image_path, status, rotate) VALUES (?, ?, 'queued', ?)",
         (user.id, str(dest), rotate),
+    )
+    log_activity(
+        conn,
+        user,
+        "ocr.upload",
+        target_type="job",
+        target_id=cur.lastrowid,
+        detail={"filename": file.filename, "rotate": rotate},
     )
     conn.commit()
     row = conn.execute("SELECT * FROM jobs WHERE id = ?", (cur.lastrowid,)).fetchone()
@@ -136,6 +145,7 @@ def cancel_job(
         conn.execute("UPDATE jobs SET cancelled=1 WHERE id=?", (job_id,))
         from ..jobs.worker import worker
         worker.request_cancel(job_id)
+    log_activity(conn, user, "ocr.cancel", target_type="job", target_id=job_id)
     conn.commit()
 
 
@@ -144,7 +154,7 @@ def delete_job(
     job_id: int,
     also_delete_transactions: bool = Query(False, description="Xóa luôn chứng từ liên kết với job này"),
     conn: sqlite3.Connection = Depends(get_connection),
-    _: UserOut = Depends(require_roles("admin")),
+    user: UserOut = Depends(require_roles("admin")),
 ):
     """Xóa 1 mục lịch sử (chỉ admin). Mặc định tách liên kết chứng từ; nếu also_delete_transactions=true thì xóa luôn chứng từ."""
     row = conn.execute("SELECT status, image_path FROM jobs WHERE id = ?", (job_id,)).fetchone()
@@ -161,6 +171,14 @@ def delete_job(
     else:
         conn.execute("UPDATE transactions SET job_id=NULL WHERE job_id=?", (job_id,))
     conn.execute("DELETE FROM jobs WHERE id=?", (job_id,))
+    log_activity(
+        conn,
+        user,
+        "ocr.delete",
+        target_type="job",
+        target_id=job_id,
+        detail={"also_delete_transactions": also_delete_transactions},
+    )
     conn.commit()
 
     if row["image_path"]:
@@ -202,6 +220,7 @@ def reocr_job(
             "rotate=? WHERE id=?",
             (body.rotate, job_id),
         )
+    log_activity(conn, user, "ocr.reocr", target_type="job", target_id=job_id, detail={"rotate": body.rotate})
     conn.commit()
     full = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     return JobResult(

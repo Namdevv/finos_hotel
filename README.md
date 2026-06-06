@@ -16,7 +16,7 @@ Self-host trong mạng LAN. OCR dùng VLM (Qwen2.5-VL qua Ollama) chạy trên m
 | Frontend | React + Vite + Tailwind, build tĩnh, **PWA** (cài như app, dùng camera) |
 | Auth | JWT + Argon2, phân quyền 3 vai trò |
 
-**Vai trò:** `admin` (toàn quyền + quản user + báo cáo) · `accountant` (nhập/duyệt + báo cáo) · `receptionist` (chụp & tạo chứng từ, không xem báo cáo tổng, không xóa).
+**Vai trò:** `admin` (toàn quyền + quản user + báo cáo + nhật ký hoạt động) · `accountant` (nhập/duyệt/sửa, xóa mềm chứng từ + báo cáo) · `receptionist`/nhân viên (chụp OCR, lưu/xem/sửa chứng từ, không xóa; dashboard chỉ xem tổng hôm nay).
 
 **Giao diện:** bảng màu & design tokens xem [COLORS.md](COLORS.md) — tham khảo file này khi làm UI mới để giữ đồng bộ.
 

@@ -7,6 +7,7 @@ import {
   IconChevronRight,
   IconHistory,
   IconKey,
+  IconLock,
   IconLogout,
   IconPencil,
   IconShield,
@@ -14,24 +15,29 @@ import {
 } from "../components/icons";
 import { ROLE_LABEL, type User } from "../types";
 
-/** Một dòng menu điều hướng (dùng cho mobile để gom Lịch sử / Phân quyền vào đây). */
+/** Một dòng menu điều hướng (dùng cho mobile để gom Thư viện / Phân quyền vào đây). */
 function MenuRow({
   icon,
   label,
   desc,
   onClick,
   danger = false,
+  disabled = false,
 }: {
   icon: React.ReactNode;
   label: string;
   desc?: string;
   onClick: () => void;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50"
+      disabled={disabled}
+      className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors ${
+        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer hover:bg-slate-50"
+      }`}
     >
       <div
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
@@ -44,7 +50,7 @@ function MenuRow({
         <div className={`text-sm font-semibold ${danger ? "text-rose-600" : "text-slate-800"}`}>{label}</div>
         {desc && <div className="truncate text-xs text-slate-400">{desc}</div>}
       </div>
-      {!danger && <IconChevronRight className="h-4 w-4 shrink-0 text-slate-300" />}
+      {disabled ? <IconLock className="h-4 w-4 shrink-0 text-slate-300" /> : !danger && <IconChevronRight className="h-4 w-4 shrink-0 text-slate-300" />}
     </button>
   );
 }
@@ -87,16 +93,17 @@ export default function Profile() {
         </div>
         <MenuRow
           icon={<IconHistory className="h-[18px] w-[18px]" />}
-          label="Lịch sử ảnh"
+          label="Thư viện ảnh"
           desc="Các ảnh sổ đã tải lên & OCR lại"
           onClick={() => nav("/uploads")}
         />
-        {hasRole("admin") && (
+        {hasRole("admin", "accountant") && (
           <MenuRow
             icon={<IconUsers className="h-[18px] w-[18px]" />}
             label="Quản lý người dùng & phân quyền"
             desc="Thêm, khóa, đổi vai trò tài khoản"
             onClick={() => nav("/users")}
+            disabled={!hasRole("admin")}
           />
         )}
         <MenuRow

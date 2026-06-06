@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import BASE_DIR
 from .database import init_db
 from .jobs.worker import worker
-from .routers import auth, ocr, stats, transactions, users
+from .routers import activities, auth, ocr, stats, transactions, users
 
 # Thư mục build của frontend (Vite -> dist). Có thể chưa tồn tại lúc dev.
 FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
@@ -40,6 +40,7 @@ app.include_router(users.router)
 app.include_router(transactions.router)
 app.include_router(ocr.router)
 app.include_router(stats.router)
+app.include_router(activities.router)
 
 
 @app.get("/api/health")

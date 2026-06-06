@@ -59,7 +59,25 @@ CREATE TABLE IF NOT EXISTS transactions (
     image_path  TEXT,                          -- ảnh gốc để đối chiếu
     created_by  INTEGER NOT NULL REFERENCES users(id),
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at  TEXT,
+    deleted_by  INTEGER REFERENCES users(id)
 );
 CREATE INDEX IF NOT EXISTS idx_txn_date ON transactions(txn_date);
 CREATE INDEX IF NOT EXISTS idx_txn_kind ON transactions(kind);
+CREATE INDEX IF NOT EXISTS idx_txn_deleted ON transactions(deleted_at);
+
+-- ---------------------------------------------------------------------------
+-- Nhật ký hoạt động — tracking thao tác chính của nhân viên/kế toán/admin.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER,
+    action      TEXT NOT NULL,
+    target_type TEXT NOT NULL DEFAULT '',
+    target_id   INTEGER,
+    detail      TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id);

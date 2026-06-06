@@ -1,0 +1,138 @@
+import { useEffect, useMemo, useState } from "react";
+import { api } from "../api";
+import { Badge, Card, PageHeader, Spinner } from "../components/ui";
+import { ROLE_LABEL, type Activity } from "../types";
+
+const ACTION_LABEL: Record<string, string> = {
+  "auth.login": "Đăng nhập",
+  "profile.update": "Sửa hồ sơ",
+  "user.create": "Tạo người dùng",
+  "user.update": "Sửa người dùng",
+  "user.delete": "Xóa người dùng",
+  "transaction.create": "Tạo chứng từ",
+  "transaction.update": "Sửa chứng từ",
+  "transaction.soft_delete": "Xóa mềm chứng từ",
+  "transaction.soft_delete_bulk": "Xóa mềm nhiều chứng từ",
+  "transaction.hard_delete": "Xóa chứng từ",
+  "transaction.hard_delete_bulk": "Xóa nhiều chứng từ",
+  "ocr.upload": "Tải ảnh OCR",
+  "ocr.cancel": "Ngừng OCR",
+  "ocr.reocr": "OCR lại",
+  "ocr.delete": "Xóa ảnh OCR",
+};
+
+function actionLabel(action: string) {
+  return ACTION_LABEL[action] ?? action;
+}
+
+function fmtTime(value: string) {
+  return value?.slice(0, 16).replace("T", " ");
+}
+
+function detailText(detail: string) {
+  if (!detail) return "";
+  try {
+    const parsed = JSON.parse(detail);
+    return Object.entries(parsed)
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`)
+      .join(" | ");
+  } catch {
+    return detail;
+  }
+}
+
+export default function Activities() {
+  const [items, setItems] = useState<Activity[] | null>(null);
+  const [action, setAction] = useState("");
+  const [error, setError] = useState("");
+
+  async function load(nextAction = action) {
+    setItems(null);
+    setError("");
+    try {
+      const params: Record<string, string> = {};
+      if (nextAction) params.action = nextAction;
+      setItems(await api.listActivities(params));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  useEffect(() => {
+    load("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const actions = useMemo(() => {
+    const keys = new Set(Object.keys(ACTION_LABEL));
+    items?.forEach((item) => keys.add(item.action));
+    return [...keys].sort();
+  }, [items]);
+
+  return (
+    <div>
+      <PageHeader
+        title="Hoạt động"
+        subtitle="Theo dõi các thao tác chính của nhân viên, kế toán và quản trị viên."
+        actions={
+          <select
+            value={action}
+            onChange={(e) => {
+              setAction(e.target.value);
+              load(e.target.value);
+            }}
+            className="field w-auto cursor-pointer"
+          >
+            <option value="">Tất cả thao tác</option>
+            {actions.map((key) => (
+              <option key={key} value={key}>
+                {actionLabel(key)}
+              </option>
+            ))}
+          </select>
+        }
+      />
+
+      {error ? (
+        <Card className="text-sm text-rose-600">{error}</Card>
+      ) : items === null ? (
+        <Spinner label="Đang tải..." />
+      ) : items.length === 0 ? (
+        <Card className="py-12 text-center text-sm text-slate-500">Chưa có hoạt động nào.</Card>
+      ) : (
+        <Card pad={false} className="overflow-hidden">
+          <table className="acc-table">
+            <thead>
+              <tr>
+                <th>Thời gian</th>
+                <th>Người thao tác</th>
+                <th>Vai trò</th>
+                <th>Thao tác</th>
+                <th>Đối tượng</th>
+                <th>Chi tiết</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td className="whitespace-nowrap text-slate-500">{fmtTime(item.created_at)}</td>
+                  <td>
+                    <div className="font-medium text-slate-800">{item.full_name || item.username || "Hệ thống"}</div>
+                    {item.username && <div className="text-xs text-slate-400">@{item.username}</div>}
+                  </td>
+                  <td>{item.role ? <Badge color="blue">{ROLE_LABEL[item.role]}</Badge> : <Badge>Không rõ</Badge>}</td>
+                  <td className="font-medium text-slate-700">{actionLabel(item.action)}</td>
+                  <td className="text-slate-500">
+                    {item.target_type || "-"}
+                    {item.target_id ? ` #${item.target_id}` : ""}
+                  </td>
+                  <td className="max-w-sm truncate text-slate-500">{detailText(item.detail) || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+    </div>
+  );
+}

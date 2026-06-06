@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./auth";
 import Layout from "./components/Layout";
 import { Spinner } from "./components/ui";
 import type { Role } from "./types";
+import Activities from "./pages/Activities";
 import Capture from "./pages/Capture";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -17,16 +18,14 @@ import "./index.css";
 
 function Protected({ children, roles }: { children: ReactNode; roles?: Role[] }) {
   const { user, loading, hasRole } = useAuth();
-  if (loading) return <Spinner label="Đang tải…" />;
+  if (loading) return <Spinner label="Đang tải..." />;
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !hasRole(...roles)) return <Navigate to="/capture" replace />;
+  if (roles && !hasRole(...roles)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
-// Trang mặc định: admin/kế toán -> Tổng quan; lễ tân -> Chụp sổ.
 function Home() {
-  const { hasRole } = useAuth();
-  return hasRole("admin", "accountant") ? <Dashboard /> : <Navigate to="/capture" replace />;
+  return <Dashboard />;
 }
 
 createRoot(document.getElementById("root")!).render(
@@ -48,6 +47,14 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/review/:jobId" element={<Review />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/profile" element={<Profile />} />
+            <Route
+              path="/activities"
+              element={
+                <Protected roles={["admin"]}>
+                  <Activities />
+                </Protected>
+              }
+            />
             <Route
               path="/users"
               element={

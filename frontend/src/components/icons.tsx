@@ -129,6 +129,12 @@ export const IconHistory = (p: P) => (
   </svg>
 );
 
+export const IconActivity = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M3 12h4l3-8 4 16 3-8h4" />
+  </svg>
+);
+
 export const IconRefresh = (p: P) => (
   <svg {...base(p)}>
     <path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6" />

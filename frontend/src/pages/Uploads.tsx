@@ -87,7 +87,7 @@ export default function Uploads() {
 
   return (
     <div>
-      <PageHeader title="Lịch sử ảnh" subtitle="Các ảnh sổ đã tải lên. Bấm để xem lại hoặc OCR lại." />
+      <PageHeader title="Thư viện ảnh" subtitle="Các ảnh sổ đã tải lên. Bấm để xem lại hoặc OCR lại." />
 
       {jobs.length === 0 ? (
         <Card className="py-12 text-center text-sm text-slate-500">

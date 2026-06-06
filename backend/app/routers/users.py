@@ -3,6 +3,7 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from ..audit import log_activity
 from ..database import get_connection
 from ..deps import require_roles
 from ..models import UserCreate, UserOut, UserUpdate
@@ -26,11 +27,19 @@ def list_users(conn: sqlite3.Connection = Depends(get_connection), _=Depends(adm
 
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def create_user(body: UserCreate, conn: sqlite3.Connection = Depends(get_connection), _=Depends(admin_only)):
+def create_user(body: UserCreate, conn: sqlite3.Connection = Depends(get_connection), admin=Depends(admin_only)):
     try:
         cur = conn.execute(
             "INSERT INTO users (username, full_name, password_hash, role) VALUES (?,?,?,?)",
             (body.username, body.full_name, hash_password(body.password), body.role),
+        )
+        log_activity(
+            conn,
+            admin,
+            "user.create",
+            target_type="user",
+            target_id=cur.lastrowid,
+            detail={"username": body.username, "role": body.role},
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -40,7 +49,7 @@ def create_user(body: UserCreate, conn: sqlite3.Connection = Depends(get_connect
 
 
 @router.patch("/{user_id}", response_model=UserOut)
-def update_user(user_id: int, body: UserUpdate, conn: sqlite3.Connection = Depends(get_connection), _=Depends(admin_only)):
+def update_user(user_id: int, body: UserUpdate, conn: sqlite3.Connection = Depends(get_connection), admin=Depends(admin_only)):
     row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy user")
@@ -58,6 +67,14 @@ def update_user(user_id: int, body: UserUpdate, conn: sqlite3.Connection = Depen
     if fields:
         values.append(user_id)
         conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", values)
+        log_activity(
+            conn,
+            admin,
+            "user.update",
+            target_type="user",
+            target_id=user_id,
+            detail={"fields": [f.split(" = ")[0] for f in fields if " = " in f]},
+        )
         conn.commit()
     row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     return _row_to_user(row)
@@ -68,4 +85,5 @@ def delete_user(user_id: int, conn: sqlite3.Connection = Depends(get_connection)
     if user_id == admin.id:
         raise HTTPException(status_code=400, detail="Không thể tự xóa chính mình")
     conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    log_activity(conn, admin, "user.delete", target_type="user", target_id=user_id)
     conn.commit()

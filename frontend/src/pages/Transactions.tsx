@@ -9,7 +9,7 @@ import type { Transaction } from "../types";
 
 const PAGE_SIZE = 20;
 
-function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -39,12 +39,14 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
           >
             <IconPencil className="h-3.5 w-3.5" /> Sửa
           </button>
-          <button
-            onClick={() => { setOpen(false); onDelete(); }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
-          >
-            <IconTrash className="h-3.5 w-3.5" /> Xóa
-          </button>
+          {onDelete && (
+            <button
+              onClick={() => { setOpen(false); onDelete(); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
+            >
+              <IconTrash className="h-3.5 w-3.5" /> Xóa
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -53,7 +55,8 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
 
 export default function Transactions() {
   const { hasRole } = useAuth();
-  const canEdit = hasRole("admin", "accountant");
+  const canEdit = hasRole("admin", "accountant", "receptionist");
+  const canDelete = hasRole("admin", "accountant");
   const [items, setItems] = useState<Transaction[] | null>(null);
   const [kind, setKind] = useState("");
   const [from, setFrom] = useState("");
@@ -190,7 +193,7 @@ export default function Transactions() {
             {selected.size > 0 ? (
               <div className="flex items-center gap-3 rounded-lg bg-brand-50 px-4 py-2">
                 <span className="text-sm font-medium text-brand-700">Đã chọn {selected.size}</span>
-                {canEdit && (
+                {canDelete && (
                   <Button variant="danger" size="sm" onClick={bulkDelete}>
                     <IconTrash className="h-3.5 w-3.5" />
                     Xóa {selected.size} chứng từ
@@ -217,7 +220,7 @@ export default function Transactions() {
             <table className="acc-table">
               <thead>
                 <tr>
-                  {canEdit && (
+                  {canDelete && (
                     <th className="w-10 !pl-4">
                       <input
                         ref={selectAllRef}
@@ -240,7 +243,7 @@ export default function Transactions() {
               <tbody>
                 {pageItems.map((t) => (
                   <tr key={t.id} className={selected.has(t.id) ? "bg-brand-50/60" : ""}>
-                    {canEdit && (
+                    {canDelete && (
                       <td className="!pl-4">
                         <input
                           type="checkbox"
@@ -268,7 +271,7 @@ export default function Transactions() {
                     </td>
                     {canEdit && (
                       <td className="num">
-                        <RowMenu onEdit={() => setEditing(t)} onDelete={() => del(t.id)} />
+                        <RowMenu onEdit={() => setEditing(t)} onDelete={canDelete ? () => del(t.id) : undefined} />
                       </td>
                     )}
                   </tr>
@@ -284,7 +287,7 @@ export default function Transactions() {
                 key={t.id}
                 className={`flex items-center justify-between gap-3 !p-4 ${selected.has(t.id) ? "ring-2 ring-brand-400" : ""}`}
               >
-                {canEdit && (
+                {canDelete && (
                   <input
                     type="checkbox"
                     checked={selected.has(t.id)}
@@ -309,7 +312,7 @@ export default function Transactions() {
                   <span className={`font-bold tabular-nums ${t.kind === "income" ? "text-emerald-600" : "text-rose-600"}`}>
                     {fmtVnd(t.amount)}
                   </span>
-                  {canEdit && <RowMenu onEdit={() => setEditing(t)} onDelete={() => del(t.id)} />}
+                  {canEdit && <RowMenu onEdit={() => setEditing(t)} onDelete={canDelete ? () => del(t.id) : undefined} />}
                 </div>
               </Card>
             ))}

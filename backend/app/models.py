@@ -79,6 +79,8 @@ class TransactionOut(TransactionBase):
     image_path: Optional[str] = None
     created_by: int
     created_at: str
+    deleted_at: Optional[str] = None
+    deleted_by: Optional[int] = None
 
 
 # ----- Jobs / OCR -----
@@ -152,3 +154,17 @@ class StatsBucket(BaseModel):
     period: str        # 'YYYY-MM-DD' hoặc 'YYYY-MM'
     income: int
     expense: int
+
+
+# ----- Activity -----
+class ActivityOut(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    role: Optional[Role] = None
+    action: str
+    target_type: str
+    target_id: Optional[int] = None
+    detail: str = ""
+    created_at: str

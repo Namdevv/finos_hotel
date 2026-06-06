@@ -3,6 +3,7 @@
 # KHÔNG cần torch/paddle/onnx/opencv. Chỉ gọi HTTP + xử lý ảnh bằng Pillow.
 
 fastapi==0.115.6
+httpx==0.28.1                    # test client cho smoke/integration tests
 uvicorn[standard]==0.34.0
 python-multipart==0.0.20        # nhận upload ảnh
 pydantic==2.10.4

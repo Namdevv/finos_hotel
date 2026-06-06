@@ -4,12 +4,14 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from ..audit import log_activity
 from ..database import get_connection
 from ..deps import get_current_user, require_roles
 from ..models import BulkDeleteRequest, TransactionCreate, TransactionOut, TransactionUpdate, UserOut
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
-editor = require_roles("admin", "accountant")
+editor = require_roles("admin", "accountant", "receptionist")
+deleter = require_roles("admin", "accountant")
 
 
 def _row_to_txn(row: sqlite3.Row) -> TransactionOut:
@@ -18,6 +20,8 @@ def _row_to_txn(row: sqlite3.Row) -> TransactionOut:
         kind=row["kind"], amount=row["amount"], source=row["source"],
         job_id=row["job_id"], image_path=row["image_path"],
         created_by=row["created_by"], created_at=row["created_at"],
+        deleted_at=row["deleted_at"] if "deleted_at" in row.keys() else None,
+        deleted_by=row["deleted_by"] if "deleted_by" in row.keys() else None,
     )
 
 
@@ -26,12 +30,15 @@ def list_transactions(
     date_from: Optional[str] = Query(None, description="YYYY-MM-DD"),
     date_to: Optional[str] = Query(None, description="YYYY-MM-DD"),
     kind: Optional[str] = Query(None),
+    include_deleted: bool = Query(False),
     limit: int = Query(200, le=1000),
     conn: sqlite3.Connection = Depends(get_connection),
-    _: UserOut = Depends(get_current_user),
+    user: UserOut = Depends(get_current_user),
 ):
     sql = "SELECT * FROM transactions WHERE 1=1"
     params: list = []
+    if not include_deleted or user.role != "admin":
+        sql += " AND deleted_at IS NULL"
     if date_from:
         sql += " AND txn_date >= ?"; params.append(date_from)
     if date_to:
@@ -54,6 +61,14 @@ def create_transaction(
         (body.txn_date, body.room, body.note, body.kind, body.amount,
          body.source, body.job_id, body.image_path, user.id),
     )
+    log_activity(
+        conn,
+        user,
+        "transaction.create",
+        target_type="transaction",
+        target_id=cur.lastrowid,
+        detail={"kind": body.kind, "amount": body.amount, "source": body.source},
+    )
     conn.commit()
     row = conn.execute("SELECT * FROM transactions WHERE id = ?", (cur.lastrowid,)).fetchone()
     return _row_to_txn(row)
@@ -62,9 +77,9 @@ def create_transaction(
 @router.patch("/{txn_id}", response_model=TransactionOut)
 def update_transaction(
     txn_id: int, body: TransactionUpdate,
-    conn: sqlite3.Connection = Depends(get_connection), _: UserOut = Depends(editor),
+    conn: sqlite3.Connection = Depends(get_connection), user: UserOut = Depends(editor),
 ):
-    row = conn.execute("SELECT * FROM transactions WHERE id = ?", (txn_id,)).fetchone()
+    row = conn.execute("SELECT * FROM transactions WHERE id = ? AND deleted_at IS NULL", (txn_id,)).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Không tìm thấy chứng từ")
 
@@ -77,6 +92,14 @@ def update_transaction(
         fields.append("updated_at = datetime('now')")
         values.append(txn_id)
         conn.execute(f"UPDATE transactions SET {', '.join(fields)} WHERE id = ?", values)
+        log_activity(
+            conn,
+            user,
+            "transaction.update",
+            target_type="transaction",
+            target_id=txn_id,
+            detail={"fields": [f.split(" = ")[0] for f in fields if " = " in f]},
+        )
         conn.commit()
     row = conn.execute("SELECT * FROM transactions WHERE id = ?", (txn_id,)).fetchone()
     return _row_to_txn(row)
@@ -86,18 +109,38 @@ def update_transaction(
 def bulk_delete_transactions(
     body: BulkDeleteRequest,
     conn: sqlite3.Connection = Depends(get_connection),
-    _: UserOut = Depends(editor),
+    user: UserOut = Depends(deleter),
 ):
     if not body.ids:
         return
     placeholders = ",".join("?" * len(body.ids))
-    conn.execute(f"DELETE FROM transactions WHERE id IN ({placeholders})", body.ids)
+    if user.role == "admin":
+        conn.execute(f"DELETE FROM transactions WHERE id IN ({placeholders})", body.ids)
+        action = "transaction.hard_delete_bulk"
+    else:
+        conn.execute(
+            f"UPDATE transactions SET deleted_at=datetime('now'), deleted_by=? "
+            f"WHERE deleted_at IS NULL AND id IN ({placeholders})",
+            [user.id, *body.ids],
+        )
+        action = "transaction.soft_delete_bulk"
+    log_activity(conn, user, action, target_type="transaction", detail={"ids": body.ids})
     conn.commit()
 
 
 @router.delete("/{txn_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(
-    txn_id: int, conn: sqlite3.Connection = Depends(get_connection), _: UserOut = Depends(editor),
+    txn_id: int, conn: sqlite3.Connection = Depends(get_connection), user: UserOut = Depends(deleter),
 ):
-    conn.execute("DELETE FROM transactions WHERE id = ?", (txn_id,))
+    if user.role == "admin":
+        conn.execute("DELETE FROM transactions WHERE id = ?", (txn_id,))
+        action = "transaction.hard_delete"
+    else:
+        conn.execute(
+            "UPDATE transactions SET deleted_at=datetime('now'), deleted_by=? "
+            "WHERE id = ? AND deleted_at IS NULL",
+            (user.id, txn_id),
+        )
+        action = "transaction.soft_delete"
+    log_activity(conn, user, action, target_type="transaction", target_id=txn_id)
     conn.commit()

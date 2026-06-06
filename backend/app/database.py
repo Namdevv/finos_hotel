@@ -54,6 +54,13 @@ def init_db() -> None:
             conn.execute("ALTER TABLE jobs ADD COLUMN cancelled INTEGER NOT NULL DEFAULT 0")
         conn.commit()
 
+        txn_cols = {r["name"] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()}
+        if "deleted_at" not in txn_cols:
+            conn.execute("ALTER TABLE transactions ADD COLUMN deleted_at TEXT")
+        if "deleted_by" not in txn_cols:
+            conn.execute("ALTER TABLE transactions ADD COLUMN deleted_by INTEGER REFERENCES users(id)")
+        conn.commit()
+
         count = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
         if count == 0:
             conn.execute(

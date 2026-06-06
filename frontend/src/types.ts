@@ -21,6 +21,8 @@ export interface Transaction {
   image_path?: string | null;
   created_by: number;
   created_at: string;
+  deleted_at?: string | null;
+  deleted_by?: number | null;
 }
 
 export interface OcrField {
@@ -81,5 +83,18 @@ export interface StatsBucket {
 export const ROLE_LABEL: Record<Role, string> = {
   admin: "Quản trị",
   accountant: "Kế toán",
-  receptionist: "Lễ tân",
+  receptionist: "Nhân viên",
 };
+
+export interface Activity {
+  id: number;
+  user_id?: number | null;
+  username?: string | null;
+  full_name?: string | null;
+  role?: Role | null;
+  action: string;
+  target_type: string;
+  target_id?: number | null;
+  detail: string;
+  created_at: string;
+}

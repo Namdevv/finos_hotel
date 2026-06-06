@@ -1,12 +1,13 @@
 """Thống kê / báo cáo — chỉ admin & kế toán (lễ tân không xem báo cáo tổng)."""
 import sqlite3
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
 from ..database import get_connection
-from ..deps import require_roles
-from ..models import StatsBucket, StatsSummary
+from ..deps import get_current_user, require_roles
+from ..models import StatsBucket, StatsSummary, UserOut
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 viewer = require_roles("admin", "accountant")
@@ -26,15 +27,19 @@ def summary(
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
     conn: sqlite3.Connection = Depends(get_connection),
-    _=Depends(viewer),
+    user: UserOut = Depends(get_current_user),
 ):
+    if user.role == "receptionist":
+        today = date.today().isoformat()
+        date_from = today
+        date_to = today
     flt, params = _date_filter(date_from, date_to)
     row = conn.execute(
         "SELECT "
         "COALESCE(SUM(CASE WHEN kind='income' THEN amount END),0) AS inc, "
         "COALESCE(SUM(CASE WHEN kind='expense' THEN amount END),0) AS exp, "
         "COUNT(*) AS cnt "
-        f"FROM transactions WHERE 1=1{flt}",
+        f"FROM transactions WHERE deleted_at IS NULL{flt}",
         params,
     ).fetchone()
     inc, exp = row["inc"], row["exp"]
@@ -55,7 +60,7 @@ def timeseries(
         f"SELECT {period_expr} AS period, "
         "COALESCE(SUM(CASE WHEN kind='income' THEN amount END),0) AS inc, "
         "COALESCE(SUM(CASE WHEN kind='expense' THEN amount END),0) AS exp "
-        f"FROM transactions WHERE 1=1{flt} "
+        f"FROM transactions WHERE deleted_at IS NULL{flt} "
         "GROUP BY period ORDER BY period",
         params,
     ).fetchall()

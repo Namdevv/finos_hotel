@@ -3,9 +3,11 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { ROLE_LABEL, type Role } from "../types";
 import {
+  IconActivity,
   IconCamera,
   IconDashboard,
   IconHistory,
+  IconLock,
   IconLogout,
   IconReceipt,
   IconUser,
@@ -17,24 +19,26 @@ interface NavItem {
   label: string;
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   roles?: Role[];
-  /** Hiện trên thanh điều hướng dưới (mobile). Mục không bật sẽ truy cập qua Hồ sơ. */
+  disabledFor?: Role[];
   mobile?: boolean;
 }
 
 const NAV: NavItem[] = [
-  { to: "/", label: "Tổng quan", Icon: IconDashboard, roles: ["admin", "accountant"], mobile: true },
+  { to: "/", label: "Tổng quan", Icon: IconDashboard, mobile: true },
   { to: "/capture", label: "Chụp sổ", Icon: IconCamera, mobile: true },
-  { to: "/uploads", label: "Lịch sử", Icon: IconHistory },
+  { to: "/uploads", label: "Thư viện", Icon: IconHistory },
   { to: "/transactions", label: "Chứng từ", Icon: IconReceipt, mobile: true },
-  { to: "/users", label: "Người dùng", Icon: IconUsers, roles: ["admin"] },
+  { to: "/activities", label: "Hoạt động", Icon: IconActivity, roles: ["admin"] },
+  { to: "/users", label: "Người dùng", Icon: IconUsers, roles: ["admin", "accountant"], disabledFor: ["accountant"] },
   { to: "/profile", label: "Hồ sơ", Icon: IconUser, mobile: true },
 ];
 
 const TITLES: Record<string, string> = {
   "/": "Tổng quan",
   "/capture": "Chụp / tải ảnh sổ",
-  "/uploads": "Lịch sử ảnh",
+  "/uploads": "Thư viện ảnh",
   "/transactions": "Chứng từ",
+  "/activities": "Hoạt động",
   "/users": "Người dùng",
   "/profile": "Hồ sơ người dùng",
 };
@@ -44,17 +48,18 @@ export default function Layout() {
   const loc = useLocation();
   const nav = useNavigate();
   const items = NAV.filter((n) => !n.roles || hasRole(...n.roles));
-  // Desktop: bỏ "Hồ sơ" khỏi danh sách (đã có thẻ người dùng ở cuối sidebar).
   const sidebarItems = items.filter((n) => n.to !== "/profile");
-  // Mobile: chỉ hiển thị các tab chính; Lịch sử/Người dùng truy cập qua Hồ sơ.
   const mobileItems = items.filter((n) => n.mobile);
   const title =
     TITLES[loc.pathname] ?? (loc.pathname.startsWith("/review") ? "Duyệt & sửa chứng từ" : "FinOS Hotel");
   const initials = (user?.full_name || user?.username || "?").trim().charAt(0).toUpperCase();
 
+  function locked(item: NavItem) {
+    return !!user && !!item.disabledFor?.includes(user.role);
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-100">
-      {/* ===== Sidebar (desktop) ===== */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-ink-900 text-slate-300 md:flex">
         <div className="flex items-center gap-3 px-5 py-5">
           <img src="/logo_finos.png" alt="FinOS Hotel" className="h-9 w-9 rounded-lg object-cover" />
@@ -68,23 +73,39 @@ export default function Layout() {
           <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             Nghiệp vụ
           </div>
-          {sidebarItems.map(({ to, label, Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
-                  isActive
-                    ? "bg-brand-600 text-white shadow-sm"
-                    : "text-slate-300 hover:bg-white/5 hover:text-white"
-                }`
-              }
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              {label}
-            </NavLink>
-          ))}
+          {sidebarItems.map((item) => {
+            const { to, label, Icon } = item;
+            if (locked(item)) {
+              return (
+                <div
+                  key={to}
+                  title="Chỉ quản trị viên được dùng chức năng này"
+                  className="group flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 opacity-60"
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                  <span className="flex-1">{label}</span>
+                  <IconLock className="h-3.5 w-3.5" />
+                </div>
+              );
+            }
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === "/"}
+                className={({ isActive }) =>
+                  `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
+                    isActive
+                      ? "bg-brand-600 text-white shadow-sm"
+                      : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  }`
+                }
+              >
+                <Icon className="h-[18px] w-[18px]" />
+                {label}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="border-t border-white/10 p-3">
@@ -115,9 +136,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* ===== Vùng nội dung ===== */}
       <div className="flex min-h-screen flex-1 flex-col md:pl-64">
-        {/* Topbar */}
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-8">
           <div className="flex items-center gap-2">
             <img src="/logo_finos.png" alt="FinOS Hotel" className="h-7 w-7 rounded-md object-cover md:hidden" />
@@ -138,7 +157,6 @@ export default function Layout() {
         </main>
       </div>
 
-      {/* ===== Bottom nav (mobile) ===== */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         {mobileItems.map(({ to, label, Icon }) => (
           <NavLink
