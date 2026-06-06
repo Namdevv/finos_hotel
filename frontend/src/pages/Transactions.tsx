@@ -7,6 +7,8 @@ import TransactionForm from "../components/TransactionForm";
 import { fmtVnd } from "../lib";
 import type { Transaction } from "../types";
 
+const PAGE_SIZE = 20;
+
 function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -59,11 +61,13 @@ export default function Transactions() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [page, setPage] = useState(1);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     setItems(null);
     setSelected(new Set());
+    setPage(1);
     const params: Record<string, string> = {};
     if (kind) params.kind = kind;
     if (from) params.date_from = from;
@@ -76,13 +80,14 @@ export default function Transactions() {
   }, []);
 
   const allIds = items?.map((t) => t.id) ?? [];
+  const totalPages = items ? Math.max(1, Math.ceil(items.length / PAGE_SIZE)) : 1;
+  const pageItems = items?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) ?? [];
+
   const allSelected = allIds.length > 0 && selected.size === allIds.length;
   const someSelected = selected.size > 0 && !allSelected;
 
   useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = someSelected;
-    }
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected;
   }, [someSelected]);
 
   function toggleAll() {
@@ -126,24 +131,13 @@ export default function Transactions() {
 
       {/* Modal nhập tay */}
       <Modal open={adding} onClose={() => setAdding(false)} title="Thêm chứng từ thủ công">
-        <TransactionForm
-          onSaved={() => {
-            setAdding(false);
-            load();
-          }}
-        />
+        <TransactionForm onSaved={() => { setAdding(false); load(); }} />
       </Modal>
 
       {/* Modal sửa */}
       <Modal open={!!editing} onClose={() => setEditing(null)} title="Sửa chứng từ">
         {editing && (
-          <TransactionForm
-            transaction={editing}
-            onSaved={() => {
-              setEditing(null);
-              load();
-            }}
-          />
+          <TransactionForm transaction={editing} onSaved={() => { setEditing(null); load(); }} />
         )}
       </Modal>
 
@@ -206,74 +200,72 @@ export default function Transactions() {
 
           {/* Bảng (desktop) */}
           <Card pad={false} className="hidden overflow-hidden md:block">
-            <div className="max-h-[65vh] overflow-auto">
-              <table className="acc-table">
-                <thead>
-                  <tr>
+            <table className="acc-table">
+              <thead>
+                <tr>
+                  {canEdit && (
+                    <th className="w-10 !pl-4">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleAll}
+                        className="cursor-pointer"
+                        title="Chọn tất cả"
+                      />
+                    </th>
+                  )}
+                  <th>Ngày</th>
+                  <th>Loại</th>
+                  <th>Phòng / khách</th>
+                  <th>Nội dung</th>
+                  <th className="num">Số tiền</th>
+                  {canEdit && <th className="w-10"></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.map((t) => (
+                  <tr key={t.id} className={selected.has(t.id) ? "bg-brand-50/60" : ""}>
                     {canEdit && (
-                      <th className="w-10 !pl-4">
+                      <td className="!pl-4">
                         <input
-                          ref={selectAllRef}
                           type="checkbox"
-                          checked={allSelected}
-                          onChange={toggleAll}
+                          checked={selected.has(t.id)}
+                          onChange={() => toggleOne(t.id)}
                           className="cursor-pointer"
-                          title="Chọn tất cả"
                         />
-                      </th>
+                      </td>
                     )}
-                    <th>Ngày</th>
-                    <th>Loại</th>
-                    <th>Phòng / khách</th>
-                    <th>Nội dung</th>
-                    <th className="num">Số tiền</th>
-                    {canEdit && <th className="w-10"></th>}
+                    <td className="whitespace-nowrap text-slate-500">{t.txn_date}</td>
+                    <td>
+                      <Badge color={t.kind === "income" ? "green" : "red"}>
+                        {t.kind === "income" ? <IconArrowUp className="h-3 w-3" /> : <IconArrowDown className="h-3 w-3" />}
+                        {t.kind === "income" ? "Thu" : "Chi"}
+                      </Badge>
+                    </td>
+                    <td className="font-medium text-slate-700">{t.room || "—"}</td>
+                    <td className="max-w-xs truncate">
+                      {t.note || "—"}
+                      {t.source === "ocr" && <span className="ml-2 align-middle"><Badge color="blue">OCR</Badge></span>}
+                    </td>
+                    <td className={`num font-semibold ${t.kind === "income" ? "text-emerald-600" : "text-rose-600"}`}>
+                      {t.kind === "expense" ? "−" : ""}
+                      {fmtVnd(t.amount)}
+                    </td>
+                    {canEdit && (
+                      <td className="num">
+                        <RowMenu onEdit={() => setEditing(t)} onDelete={() => del(t.id)} />
+                      </td>
+                    )}
                   </tr>
-                </thead>
-                <tbody>
-                  {items.map((t) => (
-                    <tr key={t.id} className={selected.has(t.id) ? "bg-brand-50/60" : ""}>
-                      {canEdit && (
-                        <td className="!pl-4">
-                          <input
-                            type="checkbox"
-                            checked={selected.has(t.id)}
-                            onChange={() => toggleOne(t.id)}
-                            className="cursor-pointer"
-                          />
-                        </td>
-                      )}
-                      <td className="whitespace-nowrap text-slate-500">{t.txn_date}</td>
-                      <td>
-                        <Badge color={t.kind === "income" ? "green" : "red"}>
-                          {t.kind === "income" ? <IconArrowUp className="h-3 w-3" /> : <IconArrowDown className="h-3 w-3" />}
-                          {t.kind === "income" ? "Thu" : "Chi"}
-                        </Badge>
-                      </td>
-                      <td className="font-medium text-slate-700">{t.room || "—"}</td>
-                      <td className="max-w-xs truncate">
-                        {t.note || "—"}
-                        {t.source === "ocr" && <span className="ml-2 align-middle"><Badge color="blue">OCR</Badge></span>}
-                      </td>
-                      <td className={`num font-semibold ${t.kind === "income" ? "text-emerald-600" : "text-rose-600"}`}>
-                        {t.kind === "expense" ? "−" : ""}
-                        {fmtVnd(t.amount)}
-                      </td>
-                      {canEdit && (
-                        <td className="num">
-                          <RowMenu onEdit={() => setEditing(t)} onDelete={() => del(t.id)} />
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </Card>
 
           {/* Thẻ (mobile) */}
           <div className="space-y-2 md:hidden">
-            {items.map((t) => (
+            {pageItems.map((t) => (
               <Card
                 key={t.id}
                 className={`flex items-center justify-between gap-3 !p-4 ${selected.has(t.id) ? "ring-2 ring-brand-400" : ""}`}
@@ -308,6 +300,29 @@ export default function Transactions() {
               </Card>
             ))}
           </div>
+
+          {/* Phân trang */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setPage((p) => p - 1)}
+                disabled={page === 1}
+                className="cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ‹ Trước
+              </button>
+              <span className="min-w-[90px] text-center text-sm text-slate-500">
+                Trang {page} / {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page === totalPages}
+                className="cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Sau ›
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
