@@ -23,16 +23,9 @@ import {
   IconReceipt,
   IconWallet,
 } from "../components/icons";
-import { fmtVnd } from "../lib";
+import { firstOfMonthIso, fmtVnd, previousMonthRangeIso, todayIso } from "../lib";
 import { ROLE_LABEL, type Activity, type StatsBucket, type StatsSummary, type Transaction } from "../types";
 import { actionLabel, detailText, fmtTime } from "./Activities";
-
-const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-const firstOfMonth = () => {
-  const d = new Date();
-  return isoDate(new Date(d.getFullYear(), d.getMonth(), 1));
-};
-const todayIso = () => isoDate(new Date());
 
 const INCOME = "#10b981"; // emerald-500
 const EXPENSE = "#f43f5e"; // rose-500
@@ -93,15 +86,14 @@ export default function Dashboard() {
     const sumParams: Record<string, string> = {};
     const txnParams: Record<string, string> = { limit: "1000" };
     if (group === "day") {
-      tsParams.date_from = firstOfMonth();
-      sumParams.date_from = firstOfMonth();
-      txnParams.date_from = firstOfMonth();
+      const monthStart = firstOfMonthIso();
+      tsParams.date_from = monthStart;
+      sumParams.date_from = monthStart;
+      txnParams.date_from = monthStart;
 
       // Kỳ trước (tháng trước) để tính xu hướng.
-      const now = new Date();
-      const prevStart = isoDate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-      const prevEnd = isoDate(new Date(now.getFullYear(), now.getMonth(), 0));
-      api.summary({ date_from: prevStart, date_to: prevEnd }).then(setPrevSummary);
+      const prev = previousMonthRangeIso();
+      api.summary({ date_from: prev.start, date_to: prev.end }).then(setPrevSummary);
     }
 
     api.summary(sumParams).then(setSummary);

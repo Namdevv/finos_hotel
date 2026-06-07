@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { Badge, Button, Card, PageHeader, Spinner } from "../components/ui";
+import { fmtDateTime } from "../lib";
 import { ROLE_LABEL, type Activity } from "../types";
 
 export const ACTION_LABEL: Record<string, string> = {
@@ -26,7 +27,7 @@ export function actionLabel(action: string) {
 }
 
 export function fmtTime(value: string) {
-  return value?.slice(0, 16).replace("T", " ");
+  return fmtDateTime(value);
 }
 
 export function detailText(detail: string) {

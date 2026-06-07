@@ -60,15 +60,71 @@ export async function compressImage(
 /** Ngưỡng confidence để cảnh báo field cần kiểm. */
 export const LOW_CONF = 0.8;
 
+export const APP_TIME_ZONE = "Asia/Ho_Chi_Minh";
+
+function datePartsInAppTz(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return { year: get("year"), month: get("month"), day: get("day") };
+}
+
+export function todayIso(): string {
+  const { year, month, day } = datePartsInAppTz();
+  return `${year}-${month}-${day}`;
+}
+
+export function firstOfMonthIso(): string {
+  const { year, month } = datePartsInAppTz();
+  return `${year}-${month}-01`;
+}
+
+export function previousMonthRangeIso(): { start: string; end: string } {
+  const { year, month } = datePartsInAppTz();
+  const curYear = Number(year);
+  const curMonth = Number(month);
+  const prevYear = curMonth === 1 ? curYear - 1 : curYear;
+  const prevMonth = curMonth === 1 ? 12 : curMonth - 1;
+  const lastDay = new Date(Date.UTC(prevYear, prevMonth, 0)).getUTCDate();
+  const mm = String(prevMonth).padStart(2, "0");
+  return {
+    start: `${prevYear}-${mm}-01`,
+    end: `${prevYear}-${mm}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
+function parseUtcTimestamp(value: string): number {
+  if (!value) return NaN;
+  const iso = value.includes("T") ? value : value.replace(" ", "T");
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso);
+  return Date.parse(hasZone ? iso : `${iso}Z`);
+}
+
+export function fmtDateTime(value: string): string {
+  const t = parseUtcTimestamp(value);
+  if (Number.isNaN(t)) return value || "";
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(t));
+}
+
 /**
  * Thời gian tương đối kiểu "vừa xong / 5 phút trước / 2 giờ trước / 3 ngày trước".
  * Chuỗi từ server là UTC dạng 'YYYY-MM-DD HH:MM:SS' (datetime('now')); thêm 'Z'
  * để JS hiểu là UTC trước khi so với hiện tại.
  */
 export function relTime(value: string): string {
-  if (!value) return "";
-  const iso = value.includes("T") ? value : value.replace(" ", "T");
-  const t = Date.parse(iso.endsWith("Z") ? iso : `${iso}Z`);
+  const t = parseUtcTimestamp(value);
   if (Number.isNaN(t)) return value;
   const diff = Date.now() - t;
   const sec = Math.round(diff / 1000);
@@ -79,5 +135,10 @@ export function relTime(value: string): string {
   if (hr < 24) return `${hr} giờ trước`;
   const day = Math.round(hr / 24);
   if (day < 7) return `${day} ngày trước`;
-  return new Date(t).toLocaleDateString("vi-VN");
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: APP_TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(t));
 }

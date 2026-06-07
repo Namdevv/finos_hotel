@@ -2,10 +2,8 @@ import { useState } from "react";
 import { api } from "../api";
 import { Button, Input } from "./ui";
 import { IconArrowDown, IconArrowUp } from "./icons";
-import { fmtVnd, fmtVndInput, parseVnd } from "../lib";
+import { fmtVnd, fmtVndInput, parseVnd, todayIso } from "../lib";
 import type { Kind, Transaction } from "../types";
-
-const todayIso = () => new Date().toISOString().slice(0, 10);
 
 /**
  * Form chứng từ. Không truyền `transaction` → thêm mới (source = manual).

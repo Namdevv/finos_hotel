@@ -4,6 +4,7 @@ import { api, getToken } from "../api";
 import { useAuth } from "../auth";
 import { Badge, Card, PageHeader, Spinner } from "../components/ui";
 import { IconAlert, IconImage, IconTrash } from "../components/icons";
+import { fmtDateTime } from "../lib";
 import type { JobSummary } from "../types";
 
 /** Ảnh từ endpoint cần Bearer token -> tải bằng fetch rồi tạo object URL. */
@@ -42,6 +43,10 @@ function statusBadge(j: JobSummary) {
   return <Badge color="amber">Trong hàng đợi</Badge>;
 }
 
+function isRunning(j: JobSummary) {
+  return !j.cancelled && (j.status === "queued" || j.status === "processing");
+}
+
 export default function Uploads() {
   const nav = useNavigate();
   const { hasRole } = useAuth();
@@ -50,7 +55,26 @@ export default function Uploads() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api.listJobs().then(setJobs).catch((e) => setError((e as Error).message));
+    let alive = true;
+    let timer: number | undefined;
+
+    async function load() {
+      try {
+        const next = await api.listJobs();
+        if (!alive) return;
+        setJobs(next);
+        setError("");
+        if (next.some(isRunning)) timer = window.setTimeout(load, 3500);
+      } catch (e) {
+        if (alive) setError((e as Error).message);
+      }
+    }
+
+    load();
+    return () => {
+      alive = false;
+      if (timer) window.clearTimeout(timer);
+    };
   }, []);
 
   async function onCancel(e: React.MouseEvent, id: number) {
@@ -96,8 +120,7 @@ export default function Uploads() {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {jobs.map((j) => {
-            const running =
-              !j.cancelled && (j.status === "queued" || j.status === "processing");
+            const running = isRunning(j);
             return (
               <div
                 key={j.id}
@@ -114,7 +137,7 @@ export default function Uploads() {
                   <div className="min-w-0 space-y-1.5">
                     {statusBadge(j)}
                     <div className="text-xs text-slate-400">
-                      {j.created_at?.slice(0, 16).replace("T", " ")}
+                      {fmtDateTime(j.created_at)}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">

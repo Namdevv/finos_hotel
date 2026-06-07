@@ -28,6 +28,7 @@ class OcrWorker:
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
+        self._recover_interrupted_jobs()
         self._stop.clear()
         self._thread = threading.Thread(target=self._run, name="ocr-worker", daemon=True)
         self._thread.start()
@@ -43,6 +44,25 @@ class OcrWorker:
             self._cancel.set()
 
     # ------------------------------------------------------------------
+    def _recover_interrupted_jobs(self) -> None:
+        """Dọn job đang processing còn sót lại sau lần chạy trước bị ngắt."""
+        conn = _connect()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "UPDATE jobs SET status='failed', stage=NULL, error='Đã ngưng', "
+                "finished_at=COALESCE(finished_at, datetime('now')) "
+                "WHERE status='processing' AND cancelled=1",
+            )
+            conn.execute(
+                "UPDATE jobs SET status='queued', stage=NULL, error=NULL, "
+                "started_at=NULL, finished_at=NULL, duration_ms=NULL "
+                "WHERE status='processing' AND cancelled=0",
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
     def _run(self) -> None:
         while not self._stop.is_set():
             job = self._claim_next_job()

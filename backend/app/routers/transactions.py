@@ -31,6 +31,24 @@ def _row_to_txn(row: sqlite3.Row) -> TransactionOut:
     )
 
 
+def _validated_image_path(conn: sqlite3.Connection, body: TransactionCreate, user: UserOut) -> str | None:
+    if body.source == "manual":
+        if body.job_id is not None:
+            raise HTTPException(status_code=400, detail="Chứng từ thủ công không được gắn job OCR")
+        return body.image_path
+    if body.job_id is None:
+        raise HTTPException(status_code=400, detail="Chứng từ OCR phải có job_id")
+
+    job = conn.execute("SELECT id, user_id, status FROM jobs WHERE id=?", (body.job_id,)).fetchone()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy job OCR")
+    if user.role == "receptionist" and job["user_id"] != user.id:
+        raise HTTPException(status_code=403, detail="Không có quyền với job OCR này")
+    if job["status"] != "done":
+        raise HTTPException(status_code=409, detail="Job OCR chưa xong, không thể tạo chứng từ")
+    return f"/api/ocr/image/{body.job_id}"
+
+
 @router.get("", response_model=list[TransactionOut])
 def list_transactions(
     date_from: Optional[str] = Query(None, description="YYYY-MM-DD"),
@@ -61,11 +79,12 @@ def create_transaction(
     conn: sqlite3.Connection = Depends(get_connection),
     user: UserOut = Depends(get_current_user),  # mọi vai trò đều được thêm chứng từ
 ):
+    image_path = _validated_image_path(conn, body, user)
     cur = conn.execute(
         "INSERT INTO transactions (txn_date, room, note, kind, amount, source, job_id, image_path, created_by) "
         "VALUES (?,?,?,?,?,?,?,?,?)",
         (body.txn_date, body.room, body.note, body.kind, body.amount,
-         body.source, body.job_id, body.image_path, user.id),
+         body.source, body.job_id, image_path, user.id),
     )
     log_activity(
         conn,

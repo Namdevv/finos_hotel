@@ -16,6 +16,8 @@ os.environ["FINOS_ADMIN_PASSWORD"] = "admin123"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app.database import _connect, init_db  # noqa: E402
+from app.jobs.worker import OcrWorker  # noqa: E402
 from app.main import app  # noqa: E402
 from app.ocr.pipeline import _ledger_amount  # noqa: E402
 from app.ocr.parse import parse_amount, parse_date  # noqa: E402
@@ -47,6 +49,31 @@ def main():
     check("OCR ledger 1000 -> 1000000", _ledger_amount("1000") == 1000000)
     check("OCR ledger 1200 -> 1200000", _ledger_amount("1200") == 1200000)
     check("OCR full VND 1000000 -> 1000000", _ledger_amount("1000000") == 1000000)
+
+    print("== OCR queue recovery ==")
+    init_db()
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "INSERT INTO jobs (user_id, image_path, status, stage, cancelled, error, started_at) "
+            "VALUES (1, 'dummy-a.jpg', 'processing', 'recognizing', 0, NULL, datetime('now'))"
+        )
+        retry_id = cur.lastrowid
+        cur = conn.execute(
+            "INSERT INTO jobs (user_id, image_path, status, stage, cancelled, error, started_at) "
+            "VALUES (1, 'dummy-b.jpg', 'processing', 'recognizing', 1, NULL, datetime('now'))"
+        )
+        cancel_id = cur.lastrowid
+        conn.commit()
+        OcrWorker()._recover_interrupted_jobs()
+        retry = conn.execute("SELECT status, stage, started_at FROM jobs WHERE id=?", (retry_id,)).fetchone()
+        cancelled = conn.execute("SELECT status, stage, error FROM jobs WHERE id=?", (cancel_id,)).fetchone()
+        check("processing chưa hủy -> queued lại", retry["status"] == "queued" and retry["stage"] is None and retry["started_at"] is None)
+        check("processing đã hủy -> failed", cancelled["status"] == "failed" and cancelled["stage"] is None and cancelled["error"])
+        conn.execute("DELETE FROM jobs WHERE id IN (?, ?)", (retry_id, cancel_id))
+        conn.commit()
+    finally:
+        conn.close()
 
     with TestClient(app) as c:
         print("== Health ==")
@@ -88,6 +115,30 @@ def main():
               c.delete(f"/api/transactions/{txn_id}", headers=hr).status_code == 403)
         check("admin xóa được (204)",
               c.delete(f"/api/transactions/{txn_id}", headers=h).status_code == 204)
+
+        print("== OCR commit ==")
+        conn = _connect()
+        try:
+            cur = conn.execute(
+                "INSERT INTO jobs (user_id, image_path, status, result_json) VALUES (1, 'dummy.jpg', 'done', '[]')"
+            )
+            job_id = cur.lastrowid
+            conn.commit()
+        finally:
+            conn.close()
+        commit_body = {
+            "rows": [
+                {"txn_date": "2026-06-03", "room": "P201", "note": "Tiền phòng", "kind": "income", "amount": 900000},
+                {"txn_date": "2026-06-03", "room": "Bếp", "note": "Mua rau", "kind": "expense", "amount": 120000},
+            ]
+        }
+        r = c.post(f"/api/ocr/jobs/{job_id}/commit", headers=h, json=commit_body)
+        check("commit OCR tạo 2 chứng từ", r.status_code == 201 and len(r.json()) == 2)
+        check("commit OCR không lưu trùng",
+              c.post(f"/api/ocr/jobs/{job_id}/commit", headers=h, json=commit_body).status_code == 409)
+        check("source=ocr thiếu job_id -> 400",
+              c.post("/api/transactions", headers=h,
+                     json={"txn_date": "2026-06-04", "room": "P301", "note": "OCR lỗi", "kind": "income", "amount": 1, "source": "ocr"}).status_code == 400)
 
         print("== Stats ==")
         s = c.get("/api/stats/summary", headers=h).json()

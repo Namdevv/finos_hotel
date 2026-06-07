@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     access_token_minutes: int = 720
     db_path: str = "finos.db"
     upload_dir: str = "uploads"
+    timezone: str = "Asia/Ho_Chi_Minh"
     max_upload_mb: int = 25         # gửi ảnh gốc (không nén) nên cần dư dung lượng
 
     admin_username: str = "admin"

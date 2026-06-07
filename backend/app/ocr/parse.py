@@ -7,6 +7,8 @@ from __future__ import annotations
 import datetime as dt
 import re
 
+from ..timezone import local_today
+
 # ----- Số tiền -----------------------------------------------------------------
 # Bắt: 1.200.000 | 1,200,000 | 1200000 | 500k | 1tr2 | 1.5tr | 2 tr
 _MONEY_TOKEN = re.compile(r"[\d.,]+\s*(?:tr|k|tỷ|ty)?", re.IGNORECASE)
@@ -95,7 +97,7 @@ def extract_amount(text: str) -> tuple[int | None, tuple[int, int] | None]:
 
 def extract_date(text: str, *, today: dt.date | None = None) -> tuple[str | None, tuple[int, int] | None]:
     """Trích ngày đầu tiên trong chuỗi dòng; trả (ISO, span) hoặc (None, None)."""
-    today = today or dt.date.today()
+    today = today or local_today()
     m = _DATE_PATTERNS[0].search(text)
     if m:
         d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -129,7 +131,7 @@ def parse_date(text: str, *, today: dt.date | None = None) -> str | None:
     """Trả về 'YYYY-MM-DD' hoặc None. Thiếu năm -> suy theo hôm nay."""
     if not text:
         return None
-    today = today or dt.date.today()
+    today = today or local_today()
     s = text.strip()
 
     m = _DATE_PATTERNS[0].search(s)

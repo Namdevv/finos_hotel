@@ -11,7 +11,16 @@ from ..audit import log_activity
 from ..config import get_settings
 from ..database import get_connection
 from ..deps import get_current_user, require_roles
-from ..models import JobOut, JobResult, JobSummary, OcrRow, ReocrRequest, UserOut
+from ..models import (
+    JobOut,
+    JobResult,
+    JobSummary,
+    OcrCommitRequest,
+    OcrRow,
+    ReocrRequest,
+    TransactionOut,
+    UserOut,
+)
 from ..notify import notify_admins
 
 router = APIRouter(prefix="/api/ocr", tags=["ocr"])
@@ -23,6 +32,17 @@ _VALID_ROTATE = {0, 90, 180, 270}
 def _can_access(user: UserOut, owner_id: int) -> bool:
     """Lễ tân chỉ thao tác job của mình; admin/kế toán xem mọi job."""
     return user.role != "receptionist" or owner_id == user.id
+
+
+def _row_to_txn(row: sqlite3.Row) -> TransactionOut:
+    return TransactionOut(
+        id=row["id"], txn_date=row["txn_date"], room=row["room"], note=row["note"],
+        kind=row["kind"], amount=row["amount"], source=row["source"],
+        job_id=row["job_id"], image_path=row["image_path"],
+        created_by=row["created_by"], created_at=row["created_at"],
+        deleted_at=row["deleted_at"] if "deleted_at" in row.keys() else None,
+        deleted_by=row["deleted_by"] if "deleted_by" in row.keys() else None,
+    )
 
 
 @router.post("/upload", response_model=JobOut, status_code=status.HTTP_201_CREATED)
@@ -45,33 +65,41 @@ async def upload_image(
 
     name = f"{uuid.uuid4().hex}{ext}"
     dest = settings.upload_path / name
-    dest.write_bytes(data)
+    try:
+        dest.write_bytes(data)
 
-    # rotate=None -> để NULL, worker dùng FINOS_OCR_ROTATE mặc định.
-    cur = conn.execute(
-        "INSERT INTO jobs (user_id, image_path, status, rotate) VALUES (?, ?, 'queued', ?)",
-        (user.id, str(dest), rotate),
-    )
-    log_activity(
-        conn,
-        user,
-        "ocr.upload",
-        target_type="job",
-        target_id=cur.lastrowid,
-        detail={"filename": file.filename, "rotate": rotate},
-    )
-    notify_admins(
-        conn,
-        type="ocr.upload",
-        level="info",
-        title="Ảnh sổ mới được tải lên",
-        body=f"{user.full_name or user.username} vừa tải ảnh sổ để nhận dạng",
-        link="/uploads",
-        actor=user,
-        target_type="job",
-        target_id=cur.lastrowid,
-    )
-    conn.commit()
+        # rotate=None -> để NULL, worker dùng FINOS_OCR_ROTATE mặc định.
+        cur = conn.execute(
+            "INSERT INTO jobs (user_id, image_path, status, rotate) VALUES (?, ?, 'queued', ?)",
+            (user.id, str(dest), rotate),
+        )
+        log_activity(
+            conn,
+            user,
+            "ocr.upload",
+            target_type="job",
+            target_id=cur.lastrowid,
+            detail={"filename": file.filename, "rotate": rotate},
+        )
+        notify_admins(
+            conn,
+            type="ocr.upload",
+            level="info",
+            title="Ảnh sổ mới được tải lên",
+            body=f"{user.full_name or user.username} vừa tải ảnh sổ để nhận dạng",
+            link="/uploads",
+            actor=user,
+            target_type="job",
+            target_id=cur.lastrowid,
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        try:
+            dest.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
     row = conn.execute("SELECT * FROM jobs WHERE id = ?", (cur.lastrowid,)).fetchone()
     return JobOut(id=row["id"], status=row["status"], created_at=row["created_at"])
 
@@ -128,6 +156,80 @@ def get_job(
         rows=rows,
         error=row["error"],
     )
+
+
+@router.post("/jobs/{job_id}/commit", response_model=list[TransactionOut], status_code=status.HTTP_201_CREATED)
+def commit_job_rows(
+    job_id: int,
+    body: OcrCommitRequest,
+    conn: sqlite3.Connection = Depends(get_connection),
+    user: UserOut = Depends(get_current_user),
+):
+    """Lưu toàn bộ dòng OCR đã duyệt trong một transaction DB để tránh lưu nửa chừng."""
+    job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy job")
+    if not _can_access(user, job["user_id"]):
+        raise HTTPException(status_code=403, detail="Không có quyền với job này")
+    if job["status"] != "done":
+        raise HTTPException(status_code=409, detail="Job chưa OCR xong, không thể lưu chứng từ")
+
+    txn_ids: list[int] = []
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        if job is None:
+            raise HTTPException(status_code=404, detail="Không tìm thấy job")
+        if job["status"] != "done":
+            raise HTTPException(status_code=409, detail="Job chưa OCR xong, không thể lưu chứng từ")
+        existing = conn.execute(
+            "SELECT COUNT(*) AS c FROM transactions WHERE job_id=? AND deleted_at IS NULL",
+            (job_id,),
+        ).fetchone()["c"]
+        if existing:
+            raise HTTPException(status_code=409, detail="Job này đã được lưu thành chứng từ")
+
+        for row in body.rows:
+            cur = conn.execute(
+                "INSERT INTO transactions (txn_date, room, note, kind, amount, source, job_id, image_path, created_by) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    row.txn_date, row.room, row.note, row.kind, row.amount,
+                    "ocr", job_id, f"/api/ocr/image/{job_id}", user.id,
+                ),
+            )
+            txn_ids.append(cur.lastrowid)
+
+        log_activity(
+            conn,
+            user,
+            "transaction.create",
+            target_type="job",
+            target_id=job_id,
+            detail={"source": "ocr", "count": len(txn_ids), "job_id": job_id},
+        )
+        notify_admins(
+            conn,
+            type="transaction.create",
+            level="success",
+            title="Đã lưu chứng từ OCR",
+            body=f"{user.full_name or user.username} vừa lưu {len(txn_ids)} chứng từ từ ảnh sổ #{job_id}",
+            link="/transactions",
+            actor=user,
+            target_type="job",
+            target_id=job_id,
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+    placeholders = ",".join("?" * len(txn_ids))
+    rows = conn.execute(
+        f"SELECT * FROM transactions WHERE id IN ({placeholders}) ORDER BY id",
+        txn_ids,
+    ).fetchall()
+    return [_row_to_txn(row) for row in rows]
 
 
 @router.post("/jobs/{job_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)

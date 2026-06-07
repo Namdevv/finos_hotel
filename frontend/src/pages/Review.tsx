@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, getToken } from "../api";
 import { Button, Card, Modal, Spinner } from "../components/ui";
 import { IconAlert, IconCheck, IconPlus, IconRefresh, IconTrash } from "../components/icons";
-import { LOW_CONF, fmtVnd, fmtVndInput, parseVnd } from "../lib";
+import { LOW_CONF, fmtVnd, fmtVndInput, parseVnd, todayIso } from "../lib";
 import type { Job, JobStage, Kind, OcrRow } from "../types";
 
 interface EditRow {
@@ -25,8 +25,6 @@ function toEdit(r: OcrRow): EditRow {
     conf: { date: r.txn_date.confidence, room: r.room.confidence, amount: r.amount.confidence },
   };
 }
-
-const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export default function Review() {
   const { jobId } = useParams();
@@ -129,17 +127,16 @@ export default function Review() {
     setSaving(true);
     setError("");
     try {
-      for (const r of rows) {
-        await api.createTransaction({
+      await api.commitOcrJob(
+        Number(jobId),
+        rows.map((r) => ({
           txn_date: r.txn_date || todayIso(),
           room: r.room,
           note: r.note,
           kind: r.kind,
           amount: parseVnd(r.amount),
-          source: "ocr",
-          job_id: Number(jobId),
-        });
-      }
+        })),
+      );
       nav("/transactions");
     } catch (err) {
       setError((err as Error).message || "Lưu thất bại");

@@ -64,6 +64,10 @@ class TransactionCreate(TransactionBase):
     image_path: Optional[str] = None
 
 
+class OcrCommitRequest(BaseModel):
+    rows: list[TransactionBase] = Field(min_length=1, max_length=200)
+
+
 class TransactionUpdate(BaseModel):
     txn_date: Optional[str] = None
     room: Optional[str] = None

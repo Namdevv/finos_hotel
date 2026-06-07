@@ -129,6 +129,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ rotate }),
     }),
+  commitOcrJob: (id: number, rows: Array<{
+    txn_date: string;
+    room: string;
+    note: string;
+    kind: string;
+    amount: number;
+  }>) =>
+    request<Transaction[]>(`/ocr/jobs/${id}/commit`, {
+      method: "POST",
+      body: JSON.stringify({ rows }),
+    }),
   cancelJob: (id: number) =>
     request<void>(`/ocr/jobs/${id}/cancel`, { method: "POST" }),
   deleteJob: (id: number, alsoDeleteTransactions = false) =>

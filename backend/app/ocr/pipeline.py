@@ -10,10 +10,10 @@ vào sổ kế toán.
 """
 from __future__ import annotations
 
-import datetime as dt
 import re
 from typing import Callable, Optional
 
+from ..timezone import local_today
 from .vlm import extract_rows
 
 # Confidence gán cho field đọc được (VLM không trả điểm tin cậy riêng từng ô).
@@ -79,6 +79,6 @@ def run_ocr(
     )
     if on_stage:
         on_stage("parsing")
-    today_iso = dt.date.today().isoformat()
+    today_iso = local_today().isoformat()
     rows = [r for r in (_to_record(it, today_iso=today_iso) for it in items) if r]
     return {"rows": rows, "raw": raw_response}

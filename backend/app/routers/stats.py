@@ -1,6 +1,5 @@
 """Thống kê / báo cáo — chỉ admin & kế toán (lễ tân không xem báo cáo tổng)."""
 import sqlite3
-from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -8,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from ..database import get_connection
 from ..deps import get_current_user, require_roles
 from ..models import StatsBucket, StatsSummary, UserOut
+from ..timezone import local_today
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 viewer = require_roles("admin", "accountant")
@@ -30,7 +30,7 @@ def summary(
     user: UserOut = Depends(get_current_user),
 ):
     if user.role == "receptionist":
-        today = date.today().isoformat()
+        today = local_today().isoformat()
         date_from = today
         date_to = today
     flt, params = _date_filter(date_from, date_to)

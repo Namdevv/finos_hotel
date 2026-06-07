@@ -54,17 +54,35 @@ export default function Capture() {
     setError("");
     void requestNotifyPermission(); // xin quyền ngay trong thao tác của user
     try {
-      for (const f of files) await api.uploadImage(f, rot);
-      setFile(null);
-      setPreview(null);
-      setRotate(DEFAULT_ROTATE);
-      setQueued(
-        files.length === 1
-          ? "Đã đưa ảnh vào hàng đợi — bạn sẽ nhận thông báo khi nhận dạng xong."
-          : `Đã đưa ${files.length} ảnh vào hàng đợi — xử lý lần lượt, có thông báo khi từng ảnh xong.`,
-      );
-    } catch (err) {
-      setError((err as Error).message || "Tải ảnh thất bại");
+      const failed: string[] = [];
+      let uploaded = 0;
+
+      for (const f of files) {
+        try {
+          await api.uploadImage(f, rot);
+          uploaded += 1;
+        } catch (err) {
+          failed.push(`${f.name || "ảnh"}: ${(err as Error).message || "tải ảnh thất bại"}`);
+        }
+      }
+
+      if (uploaded > 0) {
+        setFile(null);
+        setPreview(null);
+        setRotate(DEFAULT_ROTATE);
+        setQueued(
+          uploaded === 1
+            ? "Đã đưa 1 ảnh vào hàng đợi — bạn sẽ nhận thông báo khi nhận dạng xong."
+            : `Đã đưa ${uploaded}/${files.length} ảnh vào hàng đợi — xử lý lần lượt, có thông báo khi từng ảnh xong.`,
+        );
+      }
+      if (failed.length > 0) {
+        setError(
+          uploaded > 0
+            ? `Còn ${failed.length} ảnh chưa tải được. ${failed[0]}`
+            : `Chưa tải được ảnh nào. ${failed[0]}`,
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -160,7 +178,7 @@ export default function Capture() {
         )}
 
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => galleryRef.current?.click()} className="flex-1">
+          <Button variant="secondary" size="sm" onClick={() => galleryRef.current?.click()} disabled={busy} className="flex-1">
             <IconImage className="h-4 w-4" />
             Từ album
           </Button>
