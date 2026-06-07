@@ -20,3 +20,4 @@ services:
 
 volumes:
   finos_data:
+    name: finos_data
