@@ -168,3 +168,23 @@ class ActivityOut(BaseModel):
     target_id: Optional[int] = None
     detail: str = ""
     created_at: str
+
+
+# ----- Notifications -----
+class NotificationOut(BaseModel):
+    id: int
+    type: str
+    level: str
+    title: str
+    body: str = ""
+    link: Optional[str] = None
+    actor_id: Optional[int] = None
+    actor_name: str = ""
+    target_type: str = ""
+    target_id: Optional[int] = None
+    is_read: bool
+    created_at: str
+
+
+class UnreadCountOut(BaseModel):
+    count: int

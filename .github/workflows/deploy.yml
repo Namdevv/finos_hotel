@@ -1,53 +1,109 @@
-name: Deploy (self-hosted LAN)
+name: Build and Deploy
 
-# Push len main -> runner tren may dich (Windows) tu pull + rebuild + restart container.
-# Runner nam trong LAN, tu poll GitHub => KHONG can mo port nao ra internet.
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}   # cho phep bam "Run workflow" thu cong tren GitHub
+  workflow_dispatch:
 
-# Chi 1 lan deploy chay tai 1 thoi diem (may yeu, tranh build chong cheo).
+permissions:
+  contents: read
+  packages: write
+
 concurrency:
   group: finos-deploy
   cancel-in-progress: false
 
-jobs:
-  deploy:
-    # Chay tren self-hosted runner trong LAN (chi co 1 may nen khong can label rieng).
-    runs-on: [self-hosted]
+env:
+  DEPLOY_DIR: /opt/finos_hotel
 
-    defaults:
-      run:
-        # Bo qua profile.ps1 + bypass execution policy (may dat Restricted),
-        # tranh loi "running scripts is disabled on this system".
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '{0}'"
-        # Thu muc clone DANG deploy tren may dich (noi da co san .env).
-        # >>> Doi lai cho dung duong dan tren may ban <<<
-        working-directory: D:\WorkPace\deploy\finos_hotel
+jobs:
+  build:
+    name: Build and push image
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Pull code moi nhat
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare image name
+        id: image
+        shell: bash
         run: |
-          git fetch --all --prune
-          git reset --hard origin/main
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "image_name=$image_name" >> "$GITHUB_OUTPUT"
 
-      - name: Rebuild & restart container
-        run: docker compose up -d --build
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Don image cu
-        run: docker image prune -f
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Kiem tra health
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image_name }}:latest
+            ${{ steps.image.outputs.image_name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Pull image and restart
+    needs: build
+    runs-on: [self-hosted, linux]
+
+    steps:
+      - name: Checkout deploy files
+        uses: actions/checkout@v4
+
+      - name: Prepare image name
+        shell: bash
         run: |
-          $ok = $false
-          for ($i = 1; $i -le 12; $i++) {
-            try {
-              $r = Invoke-WebRequest -UseBasicParsing http://localhost:8000/api/health -TimeoutSec 5
-              if ($r.StatusCode -eq 200) { $ok = $true; break }
-            } catch { }
-            Write-Host "Cho service len... ($i/12)"
-            Start-Sleep -Seconds 5
-          }
-          if (-not $ok) { Write-Error "Service khong phan hoi /api/health"; exit 1 }
-          Write-Host "OK: service da len"
+          echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Prepare deploy directory
+        shell: bash
+        run: |
+          mkdir -p "$DEPLOY_DIR"
+          cp docker-compose.prod.yml "$DEPLOY_DIR/docker-compose.prod.yml"
+          if [ ! -f "$DEPLOY_DIR/.env" ]; then
+            echo "::error::.env is missing on server: $DEPLOY_DIR/.env"
+            exit 1
+          fi
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and restart
+        shell: bash
+        run: |
+          cd "$DEPLOY_DIR"
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d
+          docker image prune -f
+
+      - name: Health check
+        shell: bash
+        run: |
+          cd "$DEPLOY_DIR"
+          for i in {1..12}; do
+            if curl -fsS http://localhost:8000/api/health >/dev/null; then
+              echo "OK: service is healthy"
+              exit 0
+            fi
+            echo "Waiting for service... ($i/12)"
+            sleep 5
+          done
+          docker compose -f docker-compose.prod.yml logs --tail=80 finos
+          echo "::error::Service did not respond on /api/health"
+          exit 1

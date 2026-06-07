@@ -80,3 +80,27 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id);
+
+-- ---------------------------------------------------------------------------
+-- Thông báo trong ứng dụng — mỗi dòng là 1 thông báo gửi tới 1 người dùng.
+-- level: 'info' | 'success' | 'warning' | 'error' (quyết định icon + màu).
+-- actor_id: người gây ra sự kiện (NULL nếu do hệ thống, vd worker OCR).
+-- link: route frontend để bấm vào điều hướng (vd '/review/12', '/transactions').
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notifications (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),  -- người nhận
+    type        TEXT NOT NULL,                  -- vd 'ocr.done', 'transaction.create'
+    level       TEXT NOT NULL DEFAULT 'info'
+                CHECK (level IN ('info', 'success', 'warning', 'error')),
+    title       TEXT NOT NULL,
+    body        TEXT NOT NULL DEFAULT '',
+    link        TEXT,                           -- route frontend khi bấm vào
+    actor_id    INTEGER REFERENCES users(id),   -- người gây ra (NULL = hệ thống)
+    actor_name  TEXT NOT NULL DEFAULT '',       -- snapshot tên người gây ra
+    target_type TEXT NOT NULL DEFAULT '',
+    target_id   INTEGER,
+    is_read     INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read, id);

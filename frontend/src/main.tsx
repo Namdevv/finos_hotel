@@ -10,6 +10,7 @@ import Activities from "./pages/Activities";
 import Capture from "./pages/Capture";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import Review from "./pages/Review";
 import Transactions from "./pages/Transactions";
@@ -52,6 +53,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/uploads" element={<Uploads />} />
             <Route path="/review/:jobId" element={<Review />} />
             <Route path="/transactions" element={<Transactions />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/profile" element={<Profile />} />
             <Route
               path="/activities"

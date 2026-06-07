@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { requestNotifyPermission } from "../notify";
 import { Button, Card } from "../components/ui";
-import { IconImage, IconCamera, IconRotate, IconSpark } from "../components/icons";
+import { IconImage, IconCamera, IconRotate, IconSpark, IconCheck } from "../components/icons";
 
 const DEFAULT_ROTATE = 90;
 
@@ -15,31 +16,56 @@ export default function Capture() {
   const [rotate, setRotate] = useState(DEFAULT_ROTATE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [queued, setQueued] = useState(""); // thông báo đã đưa vào hàng đợi
 
-  function pick(e: React.ChangeEvent<HTMLInputElement>) {
+  // Chụp từ máy ảnh: luôn 1 ảnh -> vào luồng xem trước + xoay.
+  function pickCamera(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
+    e.target.value = ""; // chọn lại cùng file vẫn kích hoạt onChange
     if (!f) return;
-    // reset value để chọn cùng file lần 2 vẫn kích hoạt onChange
+    showPreview(f);
+  }
+
+  // Từ album: 1 ảnh -> xem trước + xoay; nhiều ảnh -> đưa thẳng vào hàng đợi.
+  function pickGallery(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
+    if (files.length === 0) return;
+    if (files.length === 1) showPreview(files[0]);
+    else queueFiles(files, DEFAULT_ROTATE);
+  }
+
+  function showPreview(f: File) {
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setRotate(DEFAULT_ROTATE);
     setError("");
+    setQueued("");
   }
 
   function rotateMore() {
     setRotate((r) => (r + 90) % 360);
   }
 
-  async function upload() {
-    if (!file) return;
+  // Đưa ảnh vào hàng đợi xử lý nền — KHÔNG điều hướng sang Review. Người dùng
+  // chụp/chọn ảnh tiếp được ngay; có thông báo (chuông + hệ thống) khi xong.
+  async function queueFiles(files: File[], rot: number) {
     setBusy(true);
     setError("");
+    void requestNotifyPermission(); // xin quyền ngay trong thao tác của user
     try {
-      const job = await api.uploadImage(file, rotate);
-      nav(`/review/${job.id}`);
+      for (const f of files) await api.uploadImage(f, rot);
+      setFile(null);
+      setPreview(null);
+      setRotate(DEFAULT_ROTATE);
+      setQueued(
+        files.length === 1
+          ? "Đã đưa ảnh vào hàng đợi — bạn sẽ nhận thông báo khi nhận dạng xong."
+          : `Đã đưa ${files.length} ảnh vào hàng đợi — xử lý lần lượt, có thông báo khi từng ảnh xong.`,
+      );
     } catch (err) {
       setError((err as Error).message || "Tải ảnh thất bại");
+    } finally {
       setBusy(false);
     }
   }
@@ -51,28 +77,47 @@ export default function Capture() {
           <IconSpark className="h-4 w-4" />
         </span>
         <p className="text-sm text-slate-600">
-          Chụp rõ trang sổ, đủ sáng, hạn chế nghiêng. Ảnh sẽ được OCR và bạn{" "}
-          <b className="text-slate-800">duyệt lại từng dòng</b> trước khi lưu vào sổ.
+          Chụp rõ trang sổ, đủ sáng, hạn chế nghiêng. Ảnh được{" "}
+          <b className="text-slate-800">xử lý nền</b> — bạn có thể chụp tiếp ngay; khi nhận dạng
+          xong sẽ có <b className="text-slate-800">thông báo</b> để bấm vào duyệt từng dòng.
         </p>
       </Card>
 
+      {queued && (
+        <Card className="flex items-start gap-3 border-emerald-200 bg-emerald-50/60">
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+            <IconCheck className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-slate-700">{queued}</p>
+            <button
+              onClick={() => nav("/uploads")}
+              className="mt-1 cursor-pointer text-sm font-semibold text-brand-600 hover:underline"
+            >
+              Xem hàng đợi trong Thư viện →
+            </button>
+          </div>
+        </Card>
+      )}
+
       <Card>
-        {/* Input mở camera trực tiếp */}
+        {/* Input mở camera trực tiếp (1 ảnh) */}
         <input
           ref={cameraRef}
           type="file"
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={pick}
+          onChange={pickCamera}
         />
-        {/* Input chọn từ album (không có capture) */}
+        {/* Input chọn từ album — cho phép chọn nhiều ảnh cùng lúc */}
         <input
           ref={galleryRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
-          onChange={pick}
+          onChange={pickGallery}
         />
 
         {preview ? (
@@ -104,7 +149,7 @@ export default function Capture() {
               <IconCamera className="h-7 w-7" />
             </span>
             <span className="text-sm font-semibold">Bấm để mở máy ảnh</span>
-            <span className="text-xs">JPG, PNG · tối đa 12MB</span>
+            <span className="text-xs">JPG, PNG · tối đa 12MB · chọn nhiều ảnh từ album</span>
           </button>
         )}
 
@@ -119,9 +164,14 @@ export default function Capture() {
             <IconImage className="h-4 w-4" />
             Từ album
           </Button>
-          <Button size="sm" onClick={upload} disabled={!file || busy} className="flex-1">
+          <Button
+            size="sm"
+            onClick={() => file && queueFiles([file], rotate)}
+            disabled={!file || busy}
+            className="flex-1"
+          >
             <IconSpark className="h-4 w-4" />
-            {busy ? "Đang xử lý…" : "OCR & duyệt"}
+            {busy ? "Đang tải lên…" : "Thêm vào hàng đợi"}
           </Button>
         </div>
       </Card>

@@ -2,6 +2,7 @@ import type {
   Activity,
   Job,
   JobSummary,
+  Notification,
   StatsBucket,
   StatsSummary,
   Transaction,
@@ -135,6 +136,19 @@ export const api = {
       `/ocr/jobs/${id}${alsoDeleteTransactions ? "?also_delete_transactions=true" : ""}`,
       { method: "DELETE" },
     ),
+
+  // Notifications — thông báo trong ứng dụng (mỗi người xem của chính mình).
+  listNotifications: (params: Record<string, string> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request<Notification[]>(`/notifications${q ? `?${q}` : ""}`);
+  },
+  unreadCount: () => request<{ count: number }>("/notifications/unread_count"),
+  markNotifRead: (id: number) =>
+    request<void>(`/notifications/${id}/read`, { method: "POST" }),
+  markAllNotifRead: () =>
+    request<void>("/notifications/read_all", { method: "POST" }),
+  deleteNotif: (id: number) =>
+    request<void>(`/notifications/${id}`, { method: "DELETE" }),
 
   // Stats
   summary: (params: Record<string, string> = {}) => {

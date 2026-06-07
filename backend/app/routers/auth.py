@@ -7,7 +7,10 @@ from ..audit import log_activity
 from ..database import get_connection
 from ..deps import get_current_user
 from ..models import LoginRequest, ProfileUpdate, TokenResponse, UserOut
+from ..notify import notify_admins
 from ..security import create_access_token, hash_password, verify_password
+
+ROLE_VN = {"admin": "Quản trị", "accountant": "Kế toán", "receptionist": "Nhân viên"}
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -28,6 +31,18 @@ def login(body: LoginRequest, conn: sqlite3.Connection = Depends(get_connection)
     )
     token = create_access_token(user_id=user.id, username=user.username, role=user.role)
     log_activity(conn, user, "auth.login", target_type="user", target_id=user.id)
+    # Admin theo dõi hoạt động đăng nhập của nhân viên/kế toán (bỏ qua admin tự đăng nhập).
+    notify_admins(
+        conn,
+        type="auth.login",
+        level="info",
+        title="Đăng nhập hệ thống",
+        body=f"{user.full_name or user.username} ({ROLE_VN.get(user.role, user.role)}) vừa đăng nhập",
+        link="/activities",
+        actor=user,
+        target_type="user",
+        target_id=user.id,
+    )
     conn.commit()
     return TokenResponse(access_token=token, user=user)
 

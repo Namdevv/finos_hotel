@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
-import { Badge, Card, PageHeader, Spinner } from "../components/ui";
+import { Badge, Button, Card, PageHeader, Spinner } from "../components/ui";
 import { ROLE_LABEL, type Activity } from "../types";
 
-const ACTION_LABEL: Record<string, string> = {
+export const ACTION_LABEL: Record<string, string> = {
   "auth.login": "Đăng nhập",
   "profile.update": "Sửa hồ sơ",
   "user.create": "Tạo người dùng",
@@ -21,15 +21,15 @@ const ACTION_LABEL: Record<string, string> = {
   "ocr.delete": "Xóa ảnh OCR",
 };
 
-function actionLabel(action: string) {
+export function actionLabel(action: string) {
   return ACTION_LABEL[action] ?? action;
 }
 
-function fmtTime(value: string) {
+export function fmtTime(value: string) {
   return value?.slice(0, 16).replace("T", " ");
 }
 
-function detailText(detail: string) {
+export function detailText(detail: string) {
   if (!detail) return "";
   try {
     const parsed = JSON.parse(detail);
@@ -41,27 +41,42 @@ function detailText(detail: string) {
   }
 }
 
+const PAGE_SIZE = 10;
+
 export default function Activities() {
   const [items, setItems] = useState<Activity[] | null>(null);
   const [action, setAction] = useState("");
+  const [page, setPage] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
   const [error, setError] = useState("");
 
-  async function load(nextAction = action) {
+  async function load(nextAction = action, nextPage = page) {
     setItems(null);
     setError("");
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, string> = {
+        // Lấy dư 1 bản ghi để biết còn trang sau hay không.
+        limit: String(PAGE_SIZE + 1),
+        offset: String(nextPage * PAGE_SIZE),
+      };
       if (nextAction) params.action = nextAction;
-      setItems(await api.listActivities(params));
+      const rows = await api.listActivities(params);
+      setHasNext(rows.length > PAGE_SIZE);
+      setItems(rows.slice(0, PAGE_SIZE));
     } catch (err) {
       setError((err as Error).message);
     }
   }
 
   useEffect(() => {
-    load("");
+    load("", 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function goto(nextPage: number) {
+    setPage(nextPage);
+    load(action, nextPage);
+  }
 
   const actions = useMemo(() => {
     const keys = new Set(Object.keys(ACTION_LABEL));
@@ -79,7 +94,8 @@ export default function Activities() {
             value={action}
             onChange={(e) => {
               setAction(e.target.value);
-              load(e.target.value);
+              setPage(0);
+              load(e.target.value, 0);
             }}
             className="field w-auto cursor-pointer"
           >
@@ -158,6 +174,19 @@ export default function Activities() {
                 )}
               </Card>
             ))}
+          </div>
+
+          {/* Phân trang — offset-based, 10 hoạt động/trang */}
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-sm text-slate-500">Trang {page + 1}</span>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" disabled={page === 0} onClick={() => goto(page - 1)}>
+                Trang trước
+              </Button>
+              <Button variant="secondary" size="sm" disabled={!hasNext} onClick={() => goto(page + 1)}>
+                Trang sau
+              </Button>
+            </div>
           </div>
         </>
       )}

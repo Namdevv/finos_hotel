@@ -12,6 +12,7 @@ from ..config import get_settings
 from ..database import get_connection
 from ..deps import get_current_user, require_roles
 from ..models import JobOut, JobResult, JobSummary, OcrRow, ReocrRequest, UserOut
+from ..notify import notify_admins
 
 router = APIRouter(prefix="/api/ocr", tags=["ocr"])
 
@@ -58,6 +59,17 @@ async def upload_image(
         target_type="job",
         target_id=cur.lastrowid,
         detail={"filename": file.filename, "rotate": rotate},
+    )
+    notify_admins(
+        conn,
+        type="ocr.upload",
+        level="info",
+        title="Ảnh sổ mới được tải lên",
+        body=f"{user.full_name or user.username} vừa tải ảnh sổ để nhận dạng",
+        link="/uploads",
+        actor=user,
+        target_type="job",
+        target_id=cur.lastrowid,
     )
     conn.commit()
     row = conn.execute("SELECT * FROM jobs WHERE id = ?", (cur.lastrowid,)).fetchone()

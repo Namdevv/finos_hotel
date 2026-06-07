@@ -11,6 +11,7 @@ import threading
 import time
 
 from ..database import _connect
+from ..notify import create_notification
 from ..ocr.pipeline import run_ocr
 from ..ocr.vlm import OcrCancelled
 
@@ -109,6 +110,19 @@ class OcrWorker:
                     job["id"],
                 ),
             )
+            n_rows = len(result["rows"])
+            create_notification(
+                conn,
+                user_id=job["user_id"],
+                type="ocr.done",
+                level="success",
+                title="Đã nhận dạng xong sổ",
+                body=(f"Nhận được {n_rows} dòng — bấm để duyệt & lưu chứng từ."
+                      if n_rows else "Không trích được dòng nào — thử OCR lại với góc xoay khác."),
+                link=f"/review/{job['id']}",
+                target_type="job",
+                target_id=job["id"],
+            )
             conn.commit()
         except OcrCancelled:
             _mark_cancelled()
@@ -116,6 +130,17 @@ class OcrWorker:
             conn.execute(
                 "UPDATE jobs SET status='failed', error=?, finished_at=datetime('now') WHERE id=?",
                 (str(exc), job["id"]),
+            )
+            create_notification(
+                conn,
+                user_id=job["user_id"],
+                type="ocr.failed",
+                level="error",
+                title="Nhận dạng sổ thất bại",
+                body="Ảnh chưa nhận dạng được. Thử chụp rõ hơn hoặc OCR lại với góc xoay khác.",
+                link=f"/review/{job['id']}",
+                target_type="job",
+                target_id=job["id"],
             )
             conn.commit()
         finally:

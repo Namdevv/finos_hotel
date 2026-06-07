@@ -59,3 +59,25 @@ export async function compressImage(
 
 /** Ngưỡng confidence để cảnh báo field cần kiểm. */
 export const LOW_CONF = 0.8;
+
+/**
+ * Thời gian tương đối kiểu "vừa xong / 5 phút trước / 2 giờ trước / 3 ngày trước".
+ * Chuỗi từ server là UTC dạng 'YYYY-MM-DD HH:MM:SS' (datetime('now')); thêm 'Z'
+ * để JS hiểu là UTC trước khi so với hiện tại.
+ */
+export function relTime(value: string): string {
+  if (!value) return "";
+  const iso = value.includes("T") ? value : value.replace(" ", "T");
+  const t = Date.parse(iso.endsWith("Z") ? iso : `${iso}Z`);
+  if (Number.isNaN(t)) return value;
+  const diff = Date.now() - t;
+  const sec = Math.round(diff / 1000);
+  if (sec < 45) return "vừa xong";
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} phút trước`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} giờ trước`;
+  const day = Math.round(hr / 24);
+  if (day < 7) return `${day} ngày trước`;
+  return new Date(t).toLocaleDateString("vi-VN");
+}

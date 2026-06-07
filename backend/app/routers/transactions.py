@@ -8,10 +8,16 @@ from ..audit import log_activity
 from ..database import get_connection
 from ..deps import get_current_user, require_roles
 from ..models import BulkDeleteRequest, TransactionCreate, TransactionOut, TransactionUpdate, UserOut
+from ..notify import notify_admins
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 editor = require_roles("admin", "accountant", "receptionist")
 deleter = require_roles("admin", "accountant")
+
+
+def _fmt_vnd(amount: int) -> str:
+    """120000 -> '120.000 đ' (định dạng VN cho nội dung thông báo)."""
+    return f"{amount:,.0f}".replace(",", ".") + " đ"
 
 
 def _row_to_txn(row: sqlite3.Row) -> TransactionOut:
@@ -69,6 +75,19 @@ def create_transaction(
         target_id=cur.lastrowid,
         detail={"kind": body.kind, "amount": body.amount, "source": body.source},
     )
+    kind_vn = "thu" if body.kind == "income" else "chi"
+    notify_admins(
+        conn,
+        type="transaction.create",
+        level="success" if body.kind == "income" else "info",
+        title=f"Chứng từ {kind_vn} mới",
+        body=f"{user.full_name or user.username} vừa tạo chứng từ {kind_vn} {_fmt_vnd(body.amount)}"
+             + (f" — {body.room}" if body.room else ""),
+        link="/transactions",
+        actor=user,
+        target_type="transaction",
+        target_id=cur.lastrowid,
+    )
     conn.commit()
     row = conn.execute("SELECT * FROM transactions WHERE id = ?", (cur.lastrowid,)).fetchone()
     return _row_to_txn(row)
@@ -125,6 +144,16 @@ def bulk_delete_transactions(
         )
         action = "transaction.soft_delete_bulk"
     log_activity(conn, user, action, target_type="transaction", detail={"ids": body.ids})
+    notify_admins(
+        conn,
+        type="transaction.delete",
+        level="warning",
+        title="Xóa nhiều chứng từ",
+        body=f"{user.full_name or user.username} vừa xóa {len(body.ids)} chứng từ",
+        link="/transactions",
+        actor=user,
+        target_type="transaction",
+    )
     conn.commit()
 
 
@@ -143,4 +172,15 @@ def delete_transaction(
         )
         action = "transaction.soft_delete"
     log_activity(conn, user, action, target_type="transaction", target_id=txn_id)
+    notify_admins(
+        conn,
+        type="transaction.delete",
+        level="warning",
+        title="Xóa chứng từ",
+        body=f"{user.full_name or user.username} vừa xóa chứng từ #{txn_id}",
+        link="/transactions",
+        actor=user,
+        target_type="transaction",
+        target_id=txn_id,
+    )
     conn.commit()

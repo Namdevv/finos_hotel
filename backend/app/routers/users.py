@@ -7,10 +7,13 @@ from ..audit import log_activity
 from ..database import get_connection
 from ..deps import require_roles
 from ..models import UserCreate, UserOut, UserUpdate
+from ..notify import create_notification
 from ..security import hash_password
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 admin_only = require_roles("admin")
+
+ROLE_VN = {"admin": "Quản trị", "accountant": "Kế toán", "receptionist": "Nhân viên"}
 
 
 def _row_to_user(row: sqlite3.Row) -> UserOut:
@@ -40,6 +43,18 @@ def create_user(body: UserCreate, conn: sqlite3.Connection = Depends(get_connect
             target_type="user",
             target_id=cur.lastrowid,
             detail={"username": body.username, "role": body.role},
+        )
+        create_notification(
+            conn,
+            user_id=cur.lastrowid,
+            type="user.welcome",
+            level="success",
+            title="Chào mừng đến với FinOS Hotel",
+            body=f"Tài khoản của bạn đã được tạo với vai trò {ROLE_VN.get(body.role, body.role)}.",
+            link="/profile",
+            actor=admin,
+            target_type="user",
+            target_id=cur.lastrowid,
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -75,6 +90,31 @@ def update_user(user_id: int, body: UserUpdate, conn: sqlite3.Connection = Depen
             target_id=user_id,
             detail={"fields": [f.split(" = ")[0] for f in fields if " = " in f]},
         )
+        # Báo cho người dùng bị tác động (trừ khi admin tự sửa mình).
+        if user_id != admin.id:
+            changes: list[str] = []
+            if body.role is not None:
+                changes.append(f"vai trò → {ROLE_VN.get(body.role, body.role)}")
+            if body.is_active is not None:
+                changes.append("mở khóa tài khoản" if body.is_active else "khóa tài khoản")
+            if body.password is not None:
+                changes.append("đặt lại mật khẩu")
+            if body.full_name is not None:
+                changes.append("cập nhật họ tên")
+            if changes:
+                deactivated = body.is_active is False
+                create_notification(
+                    conn,
+                    user_id=user_id,
+                    type="user.update",
+                    level="warning" if deactivated else "info",
+                    title="Tài khoản của bạn vừa được cập nhật",
+                    body="Quản trị viên đã " + ", ".join(changes) + ".",
+                    link="/profile",
+                    actor=admin,
+                    target_type="user",
+                    target_id=user_id,
+                )
         conn.commit()
     row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     return _row_to_user(row)

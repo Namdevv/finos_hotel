@@ -17,6 +17,7 @@ def list_activities(
     user_id: Optional[int] = Query(None),
     action: Optional[str] = Query(None),
     limit: int = Query(200, le=1000),
+    offset: int = Query(0, ge=0),
     conn: sqlite3.Connection = Depends(get_connection),
     _: UserOut = Depends(admin_only),
 ):
@@ -33,8 +34,9 @@ def list_activities(
     if action:
         sql += " AND a.action = ?"
         params.append(action)
-    sql += " ORDER BY a.id DESC LIMIT ?"
+    sql += " ORDER BY a.id DESC LIMIT ? OFFSET ?"
     params.append(limit)
+    params.append(offset)
     return [
         ActivityOut(
             id=row["id"],

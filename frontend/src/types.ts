@@ -98,3 +98,20 @@ export interface Activity {
   detail: string;
   created_at: string;
 }
+
+export type NotifLevel = "info" | "success" | "warning" | "error";
+
+export interface Notification {
+  id: number;
+  type: string;
+  level: NotifLevel;
+  title: string;
+  body: string;
+  link?: string | null;
+  actor_id?: number | null;
+  actor_name: string;
+  target_type: string;
+  target_id?: number | null;
+  is_read: boolean;
+  created_at: string;
+}

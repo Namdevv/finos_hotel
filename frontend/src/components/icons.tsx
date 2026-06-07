@@ -191,3 +191,34 @@ export const IconDots = (p: P) => (
     <circle cx="19" cy="12" r="1" fill="currentColor" />
   </svg>
 );
+
+// Chuông — thông báo (bell)
+export const IconBell = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+  </svg>
+);
+
+// Hai dấu tích — đánh dấu đã đọc (check-check)
+export const IconCheckCheck = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M18 6 7 17l-5-5" />
+    <path d="m22 10-7.5 7.5L13 16" />
+  </svg>
+);
+
+// Hộp thư — trạng thái rỗng (inbox)
+export const IconInbox = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+    <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" />
+  </svg>
+);
+
+// X nhỏ — đóng/xóa (x)
+export const IconX = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
