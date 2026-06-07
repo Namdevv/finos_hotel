@@ -1,4 +1,4 @@
-"""Test OCR sổ khách sạn bằng VLM (Ollama + Qwen2.5-VL).
+"""Test OCR sổ khách sạn bằng VLM (Ollama + Gemma 4 31B).
 
 Khác với detect-box (PP-OCR), VLM ĐỌC TỔNG THỂ cả trang nên xử được số khoanh
 tròn + viết tay + bảng. Script gửi ảnh cho Ollama, yêu cầu trả JSON phòng+tiền
@@ -6,12 +6,12 @@ mỗi dòng, rồi áp quy ước nghìn (×1.000) giống app để bạn so v�
 
 CHUẨN BỊ:
   - Cài Ollama, chạy nền (mặc định http://localhost:11434)
-  - ollama pull qwen2.5vl:7b
+  - ollama pull gemma4:31b-cloud
 
 CHẠY:
   py poc/ocr_vlm_test.py duong_dan/anh_so.jpg
   py poc/ocr_vlm_test.py duong_dan/thu_muc_anh/        # cả thư mục
-  py poc/ocr_vlm_test.py anh.jpg --model qwen2.5vl:7b --raw   # in thêm JSON thô
+  py poc/ocr_vlm_test.py anh.jpg --model gemma4:31b-cloud --raw   # in thêm JSON thô
 
 Chỉ dùng thư viện chuẩn + Pillow (đã có trong requirements). Không cần GPU lib
 trong venv này — Ollama lo phần GPU.

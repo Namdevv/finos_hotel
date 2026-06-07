@@ -1,5 +1,5 @@
 # Chạy trên máy đích trong LAN:
-#   1) Sao chép .env (từ backend/.env.example) và đổi FINOS_SECRET_KEY, mật khẩu admin.
+#   1) Sao chép .env (từ .env.example) và đổi FINOS_SECRET_KEY, mật khẩu admin.
 #   2) docker compose up -d --build
 #   3) Truy cập http://<IP-máy-này>:8000 từ điện thoại/máy khác cùng mạng.
 services:

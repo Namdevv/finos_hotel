@@ -14,6 +14,7 @@
   <a href="#-kiến-trúc">Kiến trúc</a> ·
   <a href="#-chạy-với-docker">Cài đặt</a> ·
   <a href="#-công-nghệ">Công nghệ</a> ·
+  <a href="#-hạn-chế-hiện-biết">Hạn chế</a> ·
   <a href="#-liên-hệ">Liên hệ</a>
 </p>
 
@@ -50,7 +51,7 @@ Dự án được thiết kế để **self-host bằng Docker** trong LAN hoặ
 | | Tính năng | Mô tả |
 |---|---|---|
 | 📸 | **Chụp & tải ảnh** | Mở camera điện thoại hoặc chọn ảnh có sẵn; xoay ảnh trước khi OCR. |
-| 🤖 | **OCR sổ viết tay** | Mô hình thị giác Gemma 3 đọc nguyên trang sổ, kể cả số tiền khoanh tròn. |
+| 🤖 | **OCR sổ viết tay** | Mô hình thị giác Gemma 4 31B đọc nguyên trang sổ, kể cả số tiền khoanh tròn. |
 | ✅ | **Duyệt song song ảnh gốc** | So sánh ảnh thật với từng dòng được đọc; sửa ngày, phòng, nội dung, số tiền. |
 | 🔄 | **OCR lại** | Chạy lại với góc xoay khác khi ảnh nghiêng/đọc thiếu dòng. |
 | 📚 | **Thư viện upload** | Xem lại lịch sử ảnh đã OCR, trạng thái job, chạy lại hoặc xóa. |
@@ -122,6 +123,9 @@ flowchart LR
 **Yêu cầu:** Docker + Docker Compose đã cài, và một instance Ollama đang chạy (trên cloud hoặc máy local).
 
 ```bash
+# 0. Chuẩn bị model OCR mặc định trên máy Ollama
+ollama pull gemma4:31b-cloud
+
 # 1. Sao chép file cấu hình
 cp .env.example .env
 
@@ -129,6 +133,7 @@ cp .env.example .env
 #    FINOS_SECRET_KEY   — chuỗi ngẫu nhiên, giữ bí mật
 #    FINOS_ADMIN_PASSWORD — mật khẩu tài khoản admin
 #    FINOS_OLLAMA_HOST  — địa chỉ Ollama (ví dụ: https://your-ollama.cloud)
+#    FINOS_OCR_MODEL    — mặc định gemma4:31b-cloud
 
 # 3. Build và chạy
 docker compose up -d --build
@@ -149,6 +154,16 @@ Sau khi khởi động, truy cập **`http://localhost:8000`** (hoặc IP máy c
 | **Database** | SQLite (WAL mode, `busy_timeout=30s`) — tiền lưu dạng số nguyên VND |
 | **OCR / AI** | Ollama + Gemma 4 31B (vision, `format:"json"`, `temperature:0`) — chạy trên cloud miễn phí |
 | **Đóng gói** | Docker — một image phục vụ cả API và UI từ cổng 8000 |
+
+
+
+## ⚠️ Hạn chế hiện biết
+
+- OCR phụ thuộc chất lượng ảnh, góc xoay, nét chữ và model VLM đang chạy; mọi dòng OCR phải được người dùng duyệt lại trước khi lưu.
+- Hàng đợi OCR cố tình chạy concurrency = 1 để tránh quá tải model; hệ thống không tối ưu cho nhiều khách sạn hoặc nhiều ca OCR song song.
+- SQLite phù hợp triển khai nhỏ trong LAN/VPS đơn lẻ; nếu cần đa chi nhánh, nhiều máy ghi đồng thời hoặc HA thì nên thiết kế lại tầng dữ liệu.
+- Ứng dụng chưa thay thế quy trình kế toán chính thức; cần đối soát chứng từ gốc và tuân thủ quy định lưu trữ dữ liệu tại nơi triển khai.
+- PWA/camera hoạt động tốt nhất trên `localhost` hoặc HTTPS. Khi dùng qua LAN bằng IP nội bộ, một số trình duyệt có thể hạn chế quyền camera/thông báo.
 
 
 

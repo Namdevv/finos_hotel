@@ -1,7 +1,7 @@
 """Test tích hợp: upload ảnh -> worker gọi VLM -> trả dòng đề xuất.
 
 Chạy: PYTHONUTF8=1 ./.venv/Scripts/python.exe -m tests.ocr_integration_test
-Cần: Ollama đang chạy + đã `ollama pull qwen2.5vl:7b` + có file poc/_sample.png.
+Cần: Ollama đang chạy + đã `ollama pull gemma4:31b-cloud` + có file poc/_sample.png.
 
 Kiểm luồng chạy được (upload -> done -> rows là danh sách). Không assert nội dung
 cụ thể vì kết quả VLM phụ thuộc ảnh/model.

@@ -132,7 +132,7 @@ def extract_rows(
 def _loads_lenient(text: str) -> Optional[object]:
     """Parse JSON kể cả khi model bọc trong markdown hoặc kèm chữ thừa.
 
-    Model local (qwen2.5vl) tôn trọng format:"json" -> trả JSON thuần. Nhưng một
+    Model local (Gemma 4 31B) tôn trọng format:"json" -> trả JSON thuần. Nhưng một
     số model (vd qua Ollama Cloud) bỏ qua ràng buộc đó, bọc kết quả trong ```json
     ... ``` hoặc thêm lời dẫn -> json.loads() nghiêm ngặt sẽ thất bại. Hàm này gỡ
     fence rồi bóc khối {...} / [...] ngoài cùng. Trả None nếu vẫn không parse được.
