@@ -5,75 +5,139 @@ import { requestNotifyPermission } from "../notify";
 import { Button, Card } from "../components/ui";
 import { IconImage, IconCamera, IconRotate, IconSpark, IconCheck } from "../components/icons";
 
-const DEFAULT_ROTATE = 90;
+const FALLBACK_ROTATE = 90;
+
+type PendingImage = {
+  id: string;
+  file: File;
+  preview: string;
+  rotate: number;
+};
+
+async function getImageSize(file: File): Promise<{ width: number; height: number }> {
+  if (typeof createImageBitmap === "function") {
+    const bitmap = await createImageBitmap(file);
+    const size = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return size;
+  }
+
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Không đọc được kích thước ảnh"));
+    };
+    img.src = url;
+  });
+}
+
+async function detectDefaultRotate(file: File): Promise<number> {
+  try {
+    const { width, height } = await getImageSize(file);
+    return width > height ? 90 : 0;
+  } catch {
+    return FALLBACK_ROTATE;
+  }
+}
 
 export default function Capture() {
   const nav = useNavigate();
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [rotate, setRotate] = useState(DEFAULT_ROTATE);
+  const [pending, setPending] = useState<PendingImage[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [queued, setQueued] = useState(""); // thông báo đã đưa vào hàng đợi
+  const [queued, setQueued] = useState("");
 
-  // Chụp từ máy ảnh: luôn 1 ảnh -> vào luồng xem trước + xoay.
-  function pickCamera(e: React.ChangeEvent<HTMLInputElement>) {
+  async function pickCamera(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    e.target.value = ""; // chọn lại cùng file vẫn kích hoạt onChange
+    e.target.value = "";
     if (!f) return;
-    showPreview(f);
+    await prepareFiles([f]);
   }
 
-  // Từ album: 1 ảnh -> xem trước + xoay; nhiều ảnh -> đưa thẳng vào hàng đợi.
-  function pickGallery(e: React.ChangeEvent<HTMLInputElement>) {
+  async function pickGallery(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length === 0) return;
-    if (files.length === 1) showPreview(files[0]);
-    else queueFiles(files, DEFAULT_ROTATE);
+    await prepareFiles(files);
   }
 
-  function showPreview(f: File) {
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setRotate(DEFAULT_ROTATE);
-    setError("");
-    setQueued("");
-  }
-
-  function rotateMore() {
-    setRotate((r) => (r + 90) % 360);
-  }
-
-  // Đưa ảnh vào hàng đợi xử lý nền — KHÔNG điều hướng sang Review. Người dùng
-  // chụp/chọn ảnh tiếp được ngay; có thông báo (chuông + hệ thống) khi xong.
-  async function queueFiles(files: File[], rot: number) {
+  async function prepareFiles(files: File[]) {
     setBusy(true);
     setError("");
-    void requestNotifyPermission(); // xin quyền ngay trong thao tác của user
+    setQueued("");
+    try {
+      const items = await Promise.all(
+        files.map(async (file, index) => ({
+          id: `${Date.now()}-${index}-${file.name}`,
+          file,
+          preview: URL.createObjectURL(file),
+          rotate: await detectDefaultRotate(file),
+        })),
+      );
+      setPending((old) => {
+        old.forEach((item) => URL.revokeObjectURL(item.preview));
+        return items;
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function rotateOne(id: string) {
+    setPending((items) =>
+      items.map((item) =>
+        item.id === id ? { ...item, rotate: (item.rotate + 90) % 360 } : item,
+      ),
+    );
+  }
+
+  function removeOne(id: string) {
+    setPending((items) => {
+      const removed = items.find((item) => item.id === id);
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return items.filter((item) => item.id !== id);
+    });
+  }
+
+  function clearPending() {
+    setPending((items) => {
+      items.forEach((item) => URL.revokeObjectURL(item.preview));
+      return [];
+    });
+  }
+
+  async function queuePending() {
+    if (pending.length === 0) return;
+    setBusy(true);
+    setError("");
+    void requestNotifyPermission();
     try {
       const failed: string[] = [];
       let uploaded = 0;
 
-      for (const f of files) {
+      for (const item of pending) {
         try {
-          await api.uploadImage(f, rot);
+          await api.uploadImage(item.file, item.rotate);
           uploaded += 1;
         } catch (err) {
-          failed.push(`${f.name || "ảnh"}: ${(err as Error).message || "tải ảnh thất bại"}`);
+          failed.push(`${item.file.name || "ảnh"}: ${(err as Error).message || "tải ảnh thất bại"}`);
         }
       }
 
       if (uploaded > 0) {
-        setFile(null);
-        setPreview(null);
-        setRotate(DEFAULT_ROTATE);
+        clearPending();
         setQueued(
           uploaded === 1
             ? "Đã đưa 1 ảnh vào hàng đợi — bạn sẽ nhận thông báo khi nhận dạng xong."
-            : `Đã đưa ${uploaded}/${files.length} ảnh vào hàng đợi — xử lý lần lượt, có thông báo khi từng ảnh xong.`,
+            : `Đã đưa ${uploaded}/${pending.length} ảnh vào hàng đợi — xử lý lần lượt, có thông báo khi từng ảnh xong.`,
         );
       }
       if (failed.length > 0) {
@@ -95,9 +159,8 @@ export default function Capture() {
           <IconSpark className="h-4 w-4" />
         </span>
         <p className="text-sm text-slate-600">
-          Chụp rõ trang sổ, đủ sáng, hạn chế nghiêng. Ảnh được{" "}
-          <b className="text-slate-800">xử lý nền</b> — bạn có thể chụp tiếp ngay; khi nhận dạng
-          xong sẽ có <b className="text-slate-800">thông báo</b> để bấm vào duyệt từng dòng.
+          Chọn một hoặc nhiều ảnh, xoay từng ảnh cho chữ đứng đúng chiều, rồi mới thêm vào{" "}
+          <b className="text-slate-800">hàng đợi OCR</b>. Bạn có thể tiếp tục chụp/chọn ảnh khác trong lúc hệ thống xử lý nền.
         </p>
       </Card>
 
@@ -119,7 +182,6 @@ export default function Capture() {
       )}
 
       <Card>
-        {/* Input mở camera trực tiếp (1 ảnh) */}
         <input
           ref={cameraRef}
           type="file"
@@ -128,7 +190,6 @@ export default function Capture() {
           className="hidden"
           onChange={pickCamera}
         />
-        {/* Input chọn từ album — cho phép chọn nhiều ảnh cùng lúc */}
         <input
           ref={galleryRef}
           type="file"
@@ -138,58 +199,88 @@ export default function Capture() {
           onChange={pickGallery}
         />
 
-        {preview ? (
-          <>
-            <div className="mb-3 flex max-h-96 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-              <img
-                src={preview}
-                alt="Xem trước ảnh sổ"
-                style={{ transform: `rotate(${-rotate}deg)` }}
-                className="max-h-96 w-full object-contain transition-transform duration-200"
-              />
-            </div>
-            <div className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+        {pending.length > 0 ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
               <span className="text-xs text-slate-500">
-                Xoay ảnh cho <b className="text-slate-700">chữ thẳng đứng</b> rồi mới OCR · {rotate}°
+                Đã chọn <b className="text-slate-700">{pending.length}</b> ảnh · xoay từng ảnh trước khi OCR
               </span>
-              <Button variant="secondary" size="sm" onClick={rotateMore}>
-                <IconRotate className="h-4 w-4" />
-                Xoay 90°
-              </Button>
+              <button
+                type="button"
+                onClick={clearPending}
+                disabled={busy}
+                className="text-xs font-semibold text-slate-500 hover:text-rose-600 disabled:opacity-50"
+              >
+                Bỏ chọn
+              </button>
             </div>
-          </>
+
+            <div className="max-h-[58vh] space-y-3 overflow-y-auto pr-1">
+              {pending.map((item, index) => (
+                <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-sm font-semibold text-slate-700">
+                      {index + 1}. {item.file.name || "Ảnh sổ"}
+                    </span>
+                    <span className="shrink-0 text-xs text-slate-500">{item.rotate}°</span>
+                  </div>
+                  <div className="mb-2 flex h-52 items-center justify-center overflow-hidden rounded-lg bg-slate-50">
+                    <img
+                      src={item.preview}
+                      alt={`Xem trước ảnh sổ ${index + 1}`}
+                      style={{ transform: `rotate(${-item.rotate}deg)` }}
+                      className="max-h-full max-w-full object-contain transition-transform duration-200"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => rotateOne(item.id)} disabled={busy}>
+                      <IconRotate className="h-4 w-4" />
+                      Xoay 90°
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => removeOne(item.id)} disabled={busy}>
+                      Bỏ ảnh
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
           <button
-            onClick={() => cameraRef.current?.click()}
+            onClick={() => galleryRef.current?.click()}
             className="flex h-64 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 text-slate-400 transition-colors hover:border-brand-400 hover:bg-brand-50/40 hover:text-brand-500"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <IconCamera className="h-7 w-7" />
+              <IconImage className="h-7 w-7" />
             </span>
-            <span className="text-sm font-semibold">Bấm để mở máy ảnh</span>
-            <span className="text-xs">JPG, PNG · tối đa 12MB · chọn nhiều ảnh từ album</span>
+            <span className="text-sm font-semibold">Bấm để chọn ảnh từ album</span>
+            <span className="text-xs">JPG, PNG · tối đa 12MB · có thể chọn nhiều ảnh</span>
           </button>
         )}
 
         {error && (
-          <div className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 ring-1 ring-rose-200">
+          <div className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 ring-1 ring-rose-200">
             {error}
           </div>
         )}
 
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => galleryRef.current?.click()} disabled={busy} className="flex-1">
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button variant="secondary" size="sm" onClick={() => cameraRef.current?.click()} disabled={busy}>
+            <IconCamera className="h-4 w-4" />
+            Camera
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => galleryRef.current?.click()} disabled={busy}>
             <IconImage className="h-4 w-4" />
             Từ album
           </Button>
           <Button
             size="sm"
-            onClick={() => file && queueFiles([file], rotate)}
-            disabled={!file || busy}
-            className="flex-1"
+            onClick={queuePending}
+            disabled={pending.length === 0 || busy}
+            className="col-span-2"
           >
             <IconSpark className="h-4 w-4" />
-            {busy ? "Đang tải lên…" : "Thêm vào hàng đợi"}
+            {busy ? "Đang xử lý…" : "Thêm vào hàng đợi"}
           </Button>
         </div>
       </Card>

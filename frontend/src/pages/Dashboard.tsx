@@ -199,11 +199,11 @@ export default function Dashboard() {
           {/* Biểu đồ chính + cơ cấu thu/chi */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-2">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-sm font-bold text-slate-800">
                   Thu / Chi {group === "day" ? "theo ngày" : "theo tháng"}
                 </h2>
-                <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
                   <LegendDot color={INCOME} label="Thu" />
                   <LegendDot color={EXPENSE} label="Chi" />
                   <LegendDot color={BRAND} label="Số dư lũy kế" />
@@ -290,32 +290,58 @@ export default function Dashboard() {
               ) : recent.length === 0 ? (
                 <Empty>Chưa có giao dịch.</Empty>
               ) : (
-                <table className="acc-table">
-                  <tbody>
+                <div>
+                  <div className="divide-y divide-slate-100 md:hidden">
                     {recent.map((t) => (
-                      <tr key={t.id}>
-                        <td className="whitespace-nowrap text-xs text-slate-500">{fmtDay(t.txn_date)}</td>
-                        <td>
-                          <div className="font-medium text-slate-800">{t.room || "—"}</div>
+                      <div key={t.id} className="flex gap-3 px-5 py-3.5">
+                        <div className="w-11 shrink-0 pt-0.5 text-xs text-slate-500">{fmtDay(t.txn_date)}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium text-slate-800">{t.room || "-"}</div>
                           {t.note && <div className="truncate text-xs text-slate-400">{t.note}</div>}
-                        </td>
-                        <td>
-                          <Badge color={t.kind === "income" ? "green" : "red"}>
-                            {t.kind === "income" ? "Thu" : "Chi"}
-                          </Badge>
-                        </td>
-                        <td
-                          className={`num font-semibold tabular-nums ${
-                            t.kind === "income" ? "text-emerald-600" : "text-rose-600"
-                          }`}
-                        >
-                          {t.kind === "income" ? "+" : "−"}
-                          {fmtVnd(t.amount)}
-                        </td>
-                      </tr>
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                            <Badge color={t.kind === "income" ? "green" : "red"}>
+                              {t.kind === "income" ? "Thu" : "Chi"}
+                            </Badge>
+                            <span
+                              className={`shrink-0 text-sm font-semibold tabular-nums ${
+                                t.kind === "income" ? "text-emerald-600" : "text-rose-600"
+                              }`}
+                            >
+                              {t.kind === "income" ? "+" : "-"}
+                              {fmtVnd(t.amount)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                  <table className="acc-table hidden md:table">
+                    <tbody>
+                      {recent.map((t) => (
+                        <tr key={t.id}>
+                          <td className="whitespace-nowrap text-xs text-slate-500">{fmtDay(t.txn_date)}</td>
+                          <td>
+                            <div className="font-medium text-slate-800">{t.room || "—"}</div>
+                            {t.note && <div className="truncate text-xs text-slate-400">{t.note}</div>}
+                          </td>
+                          <td>
+                            <Badge color={t.kind === "income" ? "green" : "red"}>
+                              {t.kind === "income" ? "Thu" : "Chi"}
+                            </Badge>
+                          </td>
+                          <td
+                            className={`num font-semibold tabular-nums ${
+                              t.kind === "income" ? "text-emerald-600" : "text-rose-600"
+                            }`}
+                          >
+                            {t.kind === "income" ? "+" : "−"}
+                            {fmtVnd(t.amount)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </Card>
 
@@ -331,14 +357,14 @@ export default function Dashboard() {
                     const max = topRooms[0].total || 1;
                     return (
                       <div key={r.room}>
-                        <div className="mb-1 flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-2 font-medium text-slate-700">
+                        <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                          <span className="flex min-w-0 items-center gap-2 font-medium text-slate-700">
                             <span className="flex h-5 w-5 items-center justify-center rounded-md bg-brand-50 text-[11px] font-bold text-brand-600">
                               {i + 1}
                             </span>
-                            {r.room}
+                            <span className="truncate">{r.room}</span>
                           </span>
-                          <span className="font-semibold tabular-nums text-slate-800">{fmtVnd(r.total)}</span>
+                          <span className="shrink-0 font-semibold tabular-nums text-slate-800">{fmtVnd(r.total)}</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                           <div

@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 venv/
 env/
+.claude/
 
 # Dữ liệu runtime — KHÔNG đẩy lên git
 *.db
@@ -15,8 +16,14 @@ data/
 
 # Secrets
 .env
+.env.*
 *.env
 !*.env.example
+!.env.*.example
+
+# Local Docker dev stack
+docker-compose.dev.yml
+.env.dev.example
 
 # Kết quả/ảnh tạm của POC
 backend/poc/poc_result.json
@@ -37,6 +44,7 @@ frontend/test-results/
 *.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+frontend/vite.preview.config.ts
 
 # ───────────── CI / Self-hosted runner ─────────────
 # GitHub Actions runner cai trong repo: nang (~340MB) + chua credentials.

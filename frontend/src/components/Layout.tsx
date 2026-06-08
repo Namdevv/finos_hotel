@@ -123,7 +123,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-1 flex-col md:pl-64">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:pl-64">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-8">
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/" aria-label="Về trang Tổng quan" className="shrink-0 md:hidden">
