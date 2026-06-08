@@ -3,6 +3,12 @@ name: Build and Deploy
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".gitignore"
+      - ".github/workflows/demo-video.yml"
   workflow_dispatch:
 
 permissions:
