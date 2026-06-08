@@ -160,7 +160,7 @@ Sau khi khởi động, truy cập **`http://localhost:8000`** (hoặc IP máy c
 ## ⚠️ Hạn chế hiện biết
 
 - OCR phụ thuộc chất lượng ảnh, góc xoay, nét chữ và model VLM đang chạy; mọi dòng OCR phải được người dùng duyệt lại trước khi lưu.
-- Hàng đợi OCR cố tình chạy concurrency = 1 để tránh quá tải model; hệ thống không tối ưu cho nhiều khách sạn hoặc nhiều ca OCR song song.
+- Hàng đợi OCR cố tình chạy concurrency = 1 để tránh quá tải model; hệ thống không tối ưu cho nhiều khách sạn hoặc nhiều ca OCR song song. (nếu có nhu cầu số hóa lớn hơn liên hệ với tôi)
 - SQLite phù hợp triển khai nhỏ trong LAN/VPS đơn lẻ; nếu cần đa chi nhánh, nhiều máy ghi đồng thời hoặc HA thì nên thiết kế lại tầng dữ liệu.
 - Ứng dụng chưa thay thế quy trình kế toán chính thức; cần đối soát chứng từ gốc và tuân thủ quy định lưu trữ dữ liệu tại nơi triển khai.
 - PWA/camera hoạt động tốt nhất trên `localhost` hoặc HTTPS. Khi dùng qua LAN bằng IP nội bộ, một số trình duyệt có thể hạn chế quyền camera/thông báo.
