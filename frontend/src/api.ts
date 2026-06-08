@@ -3,6 +3,9 @@ import type {
   Job,
   JobSummary,
   Notification,
+  NotificationPreference,
+  PushKey,
+  PushStatus,
   StatsBucket,
   StatsSummary,
   Transaction,
@@ -160,6 +163,25 @@ export const api = {
     request<void>("/notifications/read_all", { method: "POST" }),
   deleteNotif: (id: number) =>
     request<void>(`/notifications/${id}`, { method: "DELETE" }),
+  listNotificationPreferences: () =>
+    request<NotificationPreference[]>("/notifications/preferences"),
+  updateNotificationPreferences: (preferences: Record<string, boolean>) =>
+    request<NotificationPreference[]>("/notifications/preferences", {
+      method: "PATCH",
+      body: JSON.stringify({ preferences }),
+    }),
+  pushKey: () => request<PushKey>("/notifications/push/key"),
+  pushStatus: () => request<PushStatus>("/notifications/push/status"),
+  subscribePush: (body: { endpoint: string; p256dh: string; auth: string }) =>
+    request<PushStatus>("/notifications/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  unsubscribePush: (body: { endpoint: string; p256dh: string; auth: string }) =>
+    request<PushStatus>("/notifications/push/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   // Stats
   summary: (params: Record<string, string> = {}) => {

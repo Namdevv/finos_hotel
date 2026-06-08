@@ -91,6 +91,7 @@ async def upload_image(
             actor=user,
             target_type="job",
             target_id=cur.lastrowid,
+            event_key_prefix=f"ocr.upload:{cur.lastrowid}",
         )
         conn.commit()
     except Exception:
@@ -218,6 +219,7 @@ def commit_job_rows(
             actor=user,
             target_type="job",
             target_id=job_id,
+            event_key_prefix=f"transaction.create:ocr:{job_id}",
         )
         conn.commit()
     except Exception:

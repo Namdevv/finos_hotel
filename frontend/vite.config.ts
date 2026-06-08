@@ -17,6 +17,7 @@ export default defineConfig({
       workbox: {
         // Dọn cache của bản build cũ ngay khi SW mới kích hoạt.
         cleanupOutdatedCaches: true,
+        importScripts: ["/push-sw.js"],
         // /api luôn đi thẳng tới backend, không bao giờ trả index.html từ cache.
         navigateFallbackDenylist: [/^\/api/],
       },

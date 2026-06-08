@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.database import _connect, init_db  # noqa: E402
 from app.jobs.worker import OcrWorker  # noqa: E402
 from app.main import app  # noqa: E402
+from app.notify import create_notification  # noqa: E402
 from app.ocr.pipeline import _ledger_amount  # noqa: E402
 from app.ocr.parse import parse_amount, parse_date  # noqa: E402
 
@@ -93,12 +94,139 @@ def main():
         r = c.post("/api/users", headers=h,
                    json={"username": "letan", "password": "letan123", "role": "receptionist", "full_name": "Lễ tân A"})
         check("tạo user 201", r.status_code == 201)
+        let_an_id = r.json()["id"]
+        r = c.post("/api/users", headers=h,
+                   json={"username": "tempdel", "password": "temp123", "role": "receptionist", "full_name": "Xóa thử"})
+        temp_id = r.json()["id"]
+        conn = _connect()
+        try:
+            conn.execute(
+                "INSERT INTO notifications (user_id, type, level, title, actor_id) "
+                "VALUES (1, 'test.actor', 'info', 'Actor cleanup', ?)",
+                (temp_id,),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        check("xóa user có welcome notification không lỗi FK",
+              c.delete(f"/api/users/{temp_id}", headers=h).status_code == 204)
+        conn = _connect()
+        try:
+            orphan = conn.execute(
+                "SELECT COUNT(*) AS c FROM notifications WHERE user_id=? OR actor_id=?",
+                (temp_id, temp_id),
+            ).fetchone()["c"]
+            check("xóa user dọn notification liên quan", orphan == 0)
+        finally:
+            conn.close()
         rt = c.post("/api/auth/login", json={"username": "letan", "password": "letan123"}).json()
         hr = {"Authorization": f"Bearer {rt['access_token']}"}
         check("lễ tân KHÔNG xem được /api/users (403)",
               c.get("/api/users", headers=hr).status_code == 403)
         check("lễ tân xem được summary hôm nay",
               c.get("/api/stats/summary", headers=hr).status_code == 200)
+
+        print("== Notifications ==")
+        user_notifs = c.get("/api/notifications", headers=hr).json()
+        check("user thấy welcome notification của mình",
+              any(n["type"] == "user.welcome" for n in user_notifs))
+        admin_notifs = c.get("/api/notifications", headers=h).json()
+        admin_notif_id = admin_notifs[0]["id"] if admin_notifs else -1
+        check("user không mark-read notification của người khác",
+              c.post(f"/api/notifications/{admin_notif_id}/read", headers=hr).status_code == 404)
+        prefs = c.get("/api/notifications/preferences", headers=hr).json()
+        check("preferences có nhóm OCR mặc định",
+              any(p["notif_type"] == "ocr" and p["enabled"] for p in prefs))
+        prefs = c.patch(
+            "/api/notifications/preferences",
+            headers=hr,
+            json={"preferences": {"ocr": False}},
+        ).json()
+        check("tắt preference OCR thành công",
+              any(p["notif_type"] == "ocr" and not p["enabled"] for p in prefs))
+        check("preference nhóm lạ bị chặn",
+              c.patch(
+                  "/api/notifications/preferences",
+                  headers=hr,
+                  json={"preferences": {"../../bad": False}},
+              ).status_code == 400)
+        conn = _connect()
+        try:
+            before_ocr = conn.execute(
+                "SELECT COUNT(*) AS c FROM notifications WHERE user_id=? AND type='ocr.done'",
+                (let_an_id,),
+            ).fetchone()["c"]
+            create_notification(
+                conn,
+                user_id=let_an_id,
+                type="ocr.done",
+                title="OCR bị tắt không nhận",
+            )
+            conn.commit()
+            after_ocr = conn.execute(
+                "SELECT COUNT(*) AS c FROM notifications WHERE user_id=? AND type='ocr.done'",
+                (let_an_id,),
+            ).fetchone()["c"]
+            check("preference tắt OCR chặn tạo notification", after_ocr == before_ocr)
+
+            create_notification(
+                conn,
+                user_id=let_an_id,
+                type="test.idempotent",
+                title="Không tạo trùng",
+                event_key="smoke:idempotent",
+            )
+            create_notification(
+                conn,
+                user_id=let_an_id,
+                type="test.idempotent",
+                title="Không tạo trùng",
+                event_key="smoke:idempotent",
+            )
+            conn.commit()
+            idem_count = conn.execute(
+                "SELECT COUNT(*) AS c FROM notifications WHERE event_key='smoke:idempotent'"
+            ).fetchone()["c"]
+            check("event_key chống tạo notification trùng", idem_count == 1)
+
+            baseline = conn.execute(
+                "SELECT COALESCE(MAX(id), 0) AS max_id FROM notifications WHERE user_id=?",
+                (let_an_id,),
+            ).fetchone()["max_id"]
+            for i in range(12):
+                conn.execute(
+                    "INSERT INTO notifications (user_id, type, level, title) VALUES (?, 'test.batch', 'info', ?)",
+                    (let_an_id, f"Batch {i:02d}"),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+        rows = c.get(
+            f"/api/notifications?only_unread=true&after_id={baseline}&limit=20",
+            headers=hr,
+        ).json()
+        ids = [n["id"] for n in rows]
+        check("after_id trả đủ batch notification mới", len(rows) == 12)
+        check("after_id trả theo thứ tự tăng dần", ids == sorted(ids))
+        check("push key trả trạng thái chưa cấu hình",
+              c.get("/api/notifications/push/key", headers=hr).json()["enabled"] is False)
+        check("push status trả subscribed false",
+              c.get("/api/notifications/push/status", headers=hr).json()["subscribed"] is False)
+        check("subscribe push khi chưa cấu hình -> 503",
+              c.post(
+                  "/api/notifications/push/subscribe",
+                  headers=hr,
+                  json={"endpoint": "https://push.example/sub", "p256dh": "k", "auth": "a"},
+              ).status_code == 503)
+        conn = _connect()
+        try:
+            queued = conn.execute(
+                "SELECT COUNT(*) AS c FROM notification_push_outbox WHERE user_id=?",
+                (let_an_id,),
+            ).fetchone()["c"]
+            check("tạo notification ghi push outbox", queued >= 1)
+        finally:
+            conn.close()
 
         print("== Transactions ==")
         c.post("/api/transactions", headers=h,

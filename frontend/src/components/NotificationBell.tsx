@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { relTime } from "../lib";
+import { useNotificationStream } from "../notify";
 import type { Notification, NotifLevel } from "../types";
 import {
   IconAlert,
@@ -113,6 +114,16 @@ export default function NotificationBell() {
     }
   }, []);
 
+  const onStreamNotification = useCallback((n: Notification) => {
+    setCount((c) => c + 1);
+    setItems((arr) => {
+      if (arr === null) return arr;
+      return [n, ...arr.filter((x) => x.id !== n.id)].slice(0, 12);
+    });
+  }, []);
+
+  useNotificationStream(true, onStreamNotification, { onlyUnread: true });
+
   // Poll số chưa đọc định kỳ + khi tab được focus lại.
   useEffect(() => {
     loadCount();
@@ -149,12 +160,15 @@ export default function NotificationBell() {
   async function openItem(n: Notification) {
     setOpen(false);
     if (!n.is_read) {
+      const prevCount = count;
+      const prevItems = items;
       setCount((c) => Math.max(0, c - 1));
       setItems((arr) => arr?.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)) ?? arr);
       try {
         await api.markNotifRead(n.id);
       } catch {
-        /* ignore */
+        setCount(prevCount);
+        setItems(prevItems);
       }
     }
     if (n.link) nav(n.link);
@@ -162,11 +176,16 @@ export default function NotificationBell() {
 
   async function markAll() {
     if (count === 0) return;
+    const prevCount = count;
+    const prevItems = items;
     setBusy(true);
     setCount(0);
     setItems((arr) => arr?.map((x) => ({ ...x, is_read: true })) ?? arr);
     try {
       await api.markAllNotifRead();
+    } catch {
+      setCount(prevCount);
+      setItems(prevItems);
     } finally {
       setBusy(false);
     }

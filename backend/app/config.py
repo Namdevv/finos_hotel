@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     timezone: str = "Asia/Ho_Chi_Minh"
     max_upload_mb: int = 25         # gửi ảnh gốc (không nén) nên cần dư dung lượng
+    notification_retention_days: int = 180  # xóa thông báo đã đọc cũ hơn N ngày; <=0 để giữ mãi
+    vapid_public_key: str = ""      # Web Push public key (base64url)
+    vapid_private_key: str = ""     # Web Push private key (base64url)
+    vapid_contact: str = "mailto:admin@example.com"
 
     admin_username: str = "admin"
     admin_password: str = "admin123"

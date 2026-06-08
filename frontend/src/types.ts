@@ -115,3 +115,19 @@ export interface Notification {
   is_read: boolean;
   created_at: string;
 }
+
+export interface NotificationPreference {
+  notif_type: string;
+  label: string;
+  enabled: boolean;
+}
+
+export interface PushKey {
+  public_key: string;
+  enabled: boolean;
+}
+
+export interface PushStatus {
+  enabled: boolean;
+  subscribed: boolean;
+}

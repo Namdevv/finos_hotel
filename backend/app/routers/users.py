@@ -55,6 +55,7 @@ def create_user(body: UserCreate, conn: sqlite3.Connection = Depends(get_connect
             actor=admin,
             target_type="user",
             target_id=cur.lastrowid,
+            event_key=f"user.welcome:{cur.lastrowid}",
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -124,6 +125,19 @@ def update_user(user_id: int, body: UserUpdate, conn: sqlite3.Connection = Depen
 def delete_user(user_id: int, conn: sqlite3.Connection = Depends(get_connection), admin=Depends(admin_only)):
     if user_id == admin.id:
         raise HTTPException(status_code=400, detail="Không thể tự xóa chính mình")
-    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    log_activity(conn, admin, "user.delete", target_type="user", target_id=user_id)
-    conn.commit()
+    row = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy user")
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("UPDATE notifications SET actor_id = NULL WHERE actor_id = ?", (user_id,))
+        conn.execute("DELETE FROM notifications WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        log_activity(conn, admin, "user.delete", target_type="user", target_id=user_id)
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User đã có dữ liệu liên quan; hãy khóa tài khoản thay vì xóa",
+        )

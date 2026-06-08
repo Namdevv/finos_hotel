@@ -89,18 +89,54 @@ CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id);
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS notifications (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     INTEGER NOT NULL REFERENCES users(id),  -- người nhận
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,  -- người nhận
     type        TEXT NOT NULL,                  -- vd 'ocr.done', 'transaction.create'
     level       TEXT NOT NULL DEFAULT 'info'
                 CHECK (level IN ('info', 'success', 'warning', 'error')),
     title       TEXT NOT NULL,
     body        TEXT NOT NULL DEFAULT '',
     link        TEXT,                           -- route frontend khi bấm vào
-    actor_id    INTEGER REFERENCES users(id),   -- người gây ra (NULL = hệ thống)
+    actor_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,   -- người gây ra (NULL = hệ thống)
     actor_name  TEXT NOT NULL DEFAULT '',       -- snapshot tên người gây ra
     target_type TEXT NOT NULL DEFAULT '',
     target_id   INTEGER,
     is_read     INTEGER NOT NULL DEFAULT 0,
+    event_key   TEXT UNIQUE,                    -- khóa chống tạo trùng khi retry (NULL = không dedupe)
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read, id);
+CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at);
+
+-- Tùy chọn nhận thông báo theo nhóm type prefix: ocr, transaction, user, auth...
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notif_type TEXT NOT NULL,
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, notif_type)
+);
+
+-- Web Push subscriptions của từng thiết bị/trình duyệt.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint   TEXT NOT NULL UNIQUE,
+    p256dh     TEXT NOT NULL,
+    auth       TEXT NOT NULL,
+    user_agent TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_push_sub_user ON push_subscriptions(user_id);
+
+-- Outbox để chỉ gửi push sau khi transaction tạo notification đã commit.
+CREATE TABLE IF NOT EXISTS notification_push_outbox (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    last_error      TEXT NOT NULL DEFAULT '',
+    delivered_at    TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_push_outbox_pending ON notification_push_outbox(delivered_at, attempts, id);

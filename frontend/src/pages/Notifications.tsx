@@ -4,7 +4,8 @@ import { api } from "../api";
 import { NotifEmpty, NotificationItem } from "../components/NotificationBell";
 import { Button, Card, PageHeader, Spinner } from "../components/ui";
 import { IconCheckCheck } from "../components/icons";
-import type { Notification } from "../types";
+import { disableWebPush, enableWebPush } from "../notify";
+import type { Notification, NotificationPreference, PushStatus } from "../types";
 
 const PAGE_SIZE = 20;
 
@@ -15,6 +16,10 @@ export default function Notifications() {
   const [page, setPage] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [error, setError] = useState("");
+  const [prefs, setPrefs] = useState<NotificationPreference[]>([]);
+  const [prefError, setPrefError] = useState("");
+  const [push, setPush] = useState<PushStatus | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const load = useCallback(async (unread: boolean, nextPage: number) => {
     setItems(null);
@@ -37,26 +42,67 @@ export default function Notifications() {
     load(onlyUnread, page);
   }, [load, onlyUnread, page]);
 
+  useEffect(() => {
+    api
+      .listNotificationPreferences()
+      .then(setPrefs)
+      .catch((err) => setPrefError((err as Error).message));
+    api.pushStatus().then(setPush).catch(() => setPush({ enabled: false, subscribed: false }));
+  }, []);
+
   async function openItem(n: Notification) {
     if (!n.is_read) {
+      const prevItems = items;
       setItems((arr) => arr?.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)) ?? arr);
       try {
         await api.markNotifRead(n.id);
       } catch {
-        /* ignore */
+        setItems(prevItems);
       }
     }
     if (n.link) nav(n.link);
   }
 
   async function markAll() {
+    const prevItems = items;
     setItems((arr) => arr?.map((x) => ({ ...x, is_read: true })) ?? arr);
     try {
       await api.markAllNotifRead();
     } catch {
-      /* ignore */
+      setItems(prevItems);
     }
     if (onlyUnread) load(true, 0);
+  }
+
+  async function togglePref(pref: NotificationPreference) {
+    setPrefError("");
+    const prev = prefs;
+    const nextEnabled = !pref.enabled;
+    setPrefs((arr) =>
+      arr.map((x) => (x.notif_type === pref.notif_type ? { ...x, enabled: nextEnabled } : x)),
+    );
+    try {
+      setPrefs(await api.updateNotificationPreferences({ [pref.notif_type]: nextEnabled }));
+    } catch (err) {
+      setPrefs(prev);
+      setPrefError((err as Error).message);
+    }
+  }
+
+  async function togglePush() {
+    if (!push) return;
+    setPrefError("");
+    setPushBusy(true);
+    try {
+      if (push.subscribed) await disableWebPush();
+      else await enableWebPush();
+      setPush(await api.pushStatus());
+    } catch (err) {
+      setPrefError((err as Error).message);
+      setPush(await api.pushStatus().catch(() => push));
+    } finally {
+      setPushBusy(false);
+    }
   }
 
   return (
@@ -97,6 +143,43 @@ export default function Notifications() {
           </div>
         }
       />
+
+      <Card className="mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Tùy chọn nhận</h2>
+            {prefError && <p className="mt-1 text-xs text-rose-600">{prefError}</p>}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              variant={push?.subscribed ? "secondary" : "primary"}
+              size="sm"
+              disabled={pushBusy || !push?.enabled}
+              onClick={togglePush}
+            >
+              {push?.subscribed ? "Tắt Web Push" : "Bật Web Push"}
+            </Button>
+            {prefs.map((pref) => (
+              <label
+                key={pref.notif_type}
+                className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                  pref.enabled
+                    ? "border-brand-200 bg-brand-50 text-brand-700"
+                    : "border-slate-200 bg-white text-slate-500"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={pref.enabled}
+                  onChange={() => togglePref(pref)}
+                  className="h-4 w-4 accent-brand-600"
+                />
+                {pref.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       {error ? (
         <Card className="text-sm text-rose-600">{error}</Card>

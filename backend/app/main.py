@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import BASE_DIR
 from .database import init_db
 from .jobs.worker import worker
+from .push import push_worker
 from .routers import activities, auth, notifications, ocr, stats, transactions, users
 
 # Thư mục build của frontend (Vite -> dist). Có thể chưa tồn tại lúc dev.
@@ -20,7 +21,9 @@ FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
 async def lifespan(_app: FastAPI):
     init_db()        # tạo bảng + seed admin
     worker.start()   # khởi động worker OCR nền (1 thread, concurrency=1)
+    push_worker.start()
     yield
+    push_worker.stop()
     worker.stop()
 
 

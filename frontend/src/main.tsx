@@ -1,4 +1,4 @@
-import { StrictMode, type ReactNode } from "react";
+import { lazy, StrictMode, Suspense, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
@@ -6,17 +6,18 @@ import { AuthProvider, useAuth } from "./auth";
 import Layout from "./components/Layout";
 import { Spinner } from "./components/ui";
 import type { Role } from "./types";
-import Activities from "./pages/Activities";
-import Capture from "./pages/Capture";
-import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
-import Notifications from "./pages/Notifications";
-import Profile from "./pages/Profile";
-import Review from "./pages/Review";
-import Transactions from "./pages/Transactions";
-import Uploads from "./pages/Uploads";
-import Users from "./pages/Users";
 import "./index.css";
+
+const Activities = lazy(() => import("./pages/Activities"));
+const Capture = lazy(() => import("./pages/Capture"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Login = lazy(() => import("./pages/Login"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Review = lazy(() => import("./pages/Review"));
+const Transactions = lazy(() => import("./pages/Transactions"));
+const Uploads = lazy(() => import("./pages/Uploads"));
+const Users = lazy(() => import("./pages/Users"));
 
 // Đăng ký service worker. Với registerType "autoUpdate", khi phát hiện bản
 // build mới, SW mới sẽ skipWaiting + claim rồi tự reload trang → người dùng
@@ -39,41 +40,43 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            element={
-              <Protected>
-                <Layout />
-              </Protected>
-            }
-          >
-            <Route path="/" element={<Home />} />
-            <Route path="/capture" element={<Capture />} />
-            <Route path="/uploads" element={<Uploads />} />
-            <Route path="/review/:jobId" element={<Review />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/profile" element={<Profile />} />
+        <Suspense fallback={<Spinner label="Đang tải..." />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
             <Route
-              path="/activities"
               element={
-                <Protected roles={["admin"]}>
-                  <Activities />
+                <Protected>
+                  <Layout />
                 </Protected>
               }
-            />
-            <Route
-              path="/users"
-              element={
-                <Protected roles={["admin"]}>
-                  <Users />
-                </Protected>
-              }
-            />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            >
+              <Route path="/" element={<Home />} />
+              <Route path="/capture" element={<Capture />} />
+              <Route path="/uploads" element={<Uploads />} />
+              <Route path="/review/:jobId" element={<Review />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route
+                path="/activities"
+                element={
+                  <Protected roles={["admin"]}>
+                    <Activities />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <Protected roles={["admin"]}>
+                    <Users />
+                  </Protected>
+                }
+              />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   </StrictMode>,

@@ -192,3 +192,29 @@ class NotificationOut(BaseModel):
 
 class UnreadCountOut(BaseModel):
     count: int
+
+
+class NotificationPreferenceOut(BaseModel):
+    notif_type: str
+    label: str
+    enabled: bool
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    preferences: dict[str, bool]
+
+
+class PushKeyOut(BaseModel):
+    public_key: str
+    enabled: bool
+
+
+class PushSubscriptionIn(BaseModel):
+    endpoint: str
+    p256dh: str
+    auth: str
+
+
+class PushStatusOut(BaseModel):
+    enabled: bool
+    subscribed: bool

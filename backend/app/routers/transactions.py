@@ -106,6 +106,7 @@ def create_transaction(
         actor=user,
         target_type="transaction",
         target_id=cur.lastrowid,
+        event_key_prefix=f"transaction.create:{cur.lastrowid}",
     )
     conn.commit()
     row = conn.execute("SELECT * FROM transactions WHERE id = ?", (cur.lastrowid,)).fetchone()
@@ -172,6 +173,7 @@ def bulk_delete_transactions(
         link="/transactions",
         actor=user,
         target_type="transaction",
+        event_key_prefix="transaction.delete.bulk:" + ",".join(map(str, sorted(body.ids))),
     )
     conn.commit()
 
@@ -201,5 +203,6 @@ def delete_transaction(
         actor=user,
         target_type="transaction",
         target_id=txn_id,
+        event_key_prefix=f"transaction.delete:{txn_id}:{action}",
     )
     conn.commit()
