@@ -30,6 +30,12 @@
 
 ## 🎬 Demo
 
+<!--ARCADE EMBED START-->
+<div style="position: relative; padding-bottom: calc(48.0208% + 41px); height: 0px; width: 100%;">
+  <iframe src="https://demo.arcade.software/U6tJGPlmO47885VT3Ya4?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Quản lý tài liệu kế toán khách sạn với tính năng chụp và lưu trữ" frameborder="0" loading="lazy" webkitallowfullscreen mozallowfullscreen allowfullscreen allow="clipboard-write" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; color-scheme: light;"></iframe>
+</div>
+<!--ARCADE EMBED END-->
+
 ![FinOS Hotel demo](docs/demo/finos-hotel-demo.gif)
 
 > 📺 [Xem bản video WebM chất lượng cao hơn](docs/demo/finos-hotel-demo.webm)
