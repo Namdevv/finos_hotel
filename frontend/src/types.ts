@@ -50,6 +50,7 @@ export interface Job {
   rotate?: number | null;
   cancelled?: boolean;
   image_path?: string | null;
+  started_at?: string | null;
   rows: OcrRow[];
   error?: string | null;
 }

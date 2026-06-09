@@ -120,6 +120,7 @@ class JobResult(BaseModel):
     rotate: Optional[int] = None  # góc xoay đã dùng (re-OCR)
     cancelled: bool = False       # người dùng đã ngưng job
     image_path: Optional[str] = None
+    started_at: Optional[str] = None  # thời điểm worker bắt đầu chạy (UTC) — để UI tính đồng hồ đúng
     rows: list[OcrRow] = []
     error: Optional[str] = None
 
