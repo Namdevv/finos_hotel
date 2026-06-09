@@ -34,7 +34,7 @@ export default function Review() {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [elapsed, setElapsed] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const [showReocr, setShowReocr] = useState(false);
   const [zoom, setZoom] = useState(false);
   const [reocrNonce, setReocrNonce] = useState(0);
@@ -68,11 +68,20 @@ export default function Review() {
   }, [jobId, reocrNonce]);
 
   // Đồng hồ đếm giây trong lúc chờ OCR (để biết hệ thống đang chạy, không treo).
+  // Chỉ tick "now"; số giây hiển thị được suy ra từ started_at của job để khi
+  // mở lại trang (vd từ Thư viện) đồng hồ tiếp tục đúng chứ không đếm lại từ 0.
   useEffect(() => {
     if (!job || job.status === "done" || job.status === "failed") return;
-    const t = window.setInterval(() => setElapsed((e) => e + 1), 1000);
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [job?.status]);
+
+  // started_at do SQLite ghi dạng "YYYY-MM-DD HH:MM:SS" theo giờ UTC, không có
+  // hậu tố múi giờ → Safari parse ra NaN. Đổi sang ISO ("...T...Z") cho chắc.
+  const startedMs = job?.started_at
+    ? Date.parse(`${job.started_at.replace(" ", "T")}Z`)
+    : NaN;
+  const elapsed = Number.isNaN(startedMs) ? 0 : Math.max(0, Math.floor((now - startedMs) / 1000));
 
   async function loadImage(id: number) {
     const res = await fetch(`/api/ocr/image/${id}`, {
@@ -106,8 +115,7 @@ export default function Review() {
       await api.reocr(Number(jobId), rotate);
       setRows([]);
       setError("");
-      setElapsed(0);
-      setJob((j) => (j ? { ...j, status: "queued", stage: null } : j));
+      setJob((j) => (j ? { ...j, status: "queued", stage: null, started_at: null } : j));
       setReocrNonce((n) => n + 1); // restart polling effect
     } catch (err) {
       setError((err as Error).message || "OCR lại thất bại");

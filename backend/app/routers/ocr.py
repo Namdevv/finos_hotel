@@ -154,6 +154,7 @@ def get_job(
         rotate=row["rotate"],
         cancelled=bool(row["cancelled"]),
         image_path=f"/api/ocr/image/{row['id']}",
+        started_at=row["started_at"],
         rows=rows,
         error=row["error"],
     )
