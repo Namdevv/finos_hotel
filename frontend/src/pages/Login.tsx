@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { Button, Input } from "../components/ui";
-import { IconCheck, IconLock } from "../components/icons";
+import { IconLock } from "../components/icons";
 
 export default function Login() {
   const { login } = useAuth();
@@ -40,7 +40,7 @@ export default function Login() {
             <br />
             quản lý thu chi trong tầm tay.
           </h2>
-          <ul className="mt-8 space-y-3 text-slate-300">
+          {/* <ul className="mt-8 space-y-3 text-slate-300">
             {[
               "Chụp sổ viết tay — OCR tự điền liệu",
               "Duyệt & sửa trước khi lưu, chính xác từng đồng",
@@ -53,7 +53,7 @@ export default function Login() {
                 <span className="text-sm">{t}</span>
               </li>
             ))}
-          </ul>
+          </ul> */}
         </div>
         <p className="text-xs text-slate-500">© {new Date().getFullYear()} FinOS Hotel</p>
       </div>
