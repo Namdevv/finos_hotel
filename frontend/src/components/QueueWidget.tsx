@@ -60,7 +60,7 @@ export default function QueueWidget() {
     <button
       onClick={() => nav("/uploads")}
       title="Xem thư viện ảnh"
-      className="fixed bottom-20 right-4 z-40 flex items-center gap-3 rounded-full border border-slate-200 bg-white py-2.5 pl-3 pr-4 shadow-pop transition-shadow hover:shadow-lg md:bottom-6"
+      className="fixed bottom-[calc(5rem_+_env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-3 rounded-full border border-slate-200 bg-white py-2.5 pl-3 pr-4 shadow-pop transition-shadow hover:shadow-lg md:bottom-6"
     >
       <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-brand-600" />
       <span className="text-left leading-tight">
