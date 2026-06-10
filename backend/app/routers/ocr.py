@@ -27,6 +27,34 @@ router = APIRouter(prefix="/api/ocr", tags=["ocr"])
 
 _ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 _VALID_ROTATE = {0, 90, 180, 270}
+_THUMB_MAX = 480  # cạnh dài tối đa (px) của ảnh thu nhỏ cho lưới Thư viện
+# Bytes ảnh của 1 job không bao giờ đổi -> cho trình duyệt cache vĩnh viễn.
+_IMG_CACHE_HEADERS = {"Cache-Control": "private, max-age=31536000, immutable"}
+
+
+def _thumb_path(job_id: int) -> Path:
+    return get_settings().upload_path / "thumbs" / f"{job_id}.jpg"
+
+
+def _ensure_thumb(job_id: int, src: Path) -> Path | None:
+    """Tạo (nếu chưa có / cũ hơn ảnh gốc) ảnh thu nhỏ JPEG, cache ra đĩa.
+
+    Trả về đường dẫn thumbnail, hoặc None nếu tạo lỗi -> caller fallback ảnh gốc.
+    """
+    dst = _thumb_path(job_id)
+    try:
+        if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+            return dst
+        from PIL import Image, ImageOps
+
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        with Image.open(src) as im:
+            im = ImageOps.exif_transpose(im)  # tôn trọng hướng EXIF như trình duyệt
+            im.thumbnail((_THUMB_MAX, _THUMB_MAX))
+            im.convert("RGB").save(dst, "JPEG", quality=80, optimize=True)
+        return dst
+    except Exception:
+        return None
 
 
 def _can_access(user: UserOut, owner_id: int) -> bool:
@@ -108,22 +136,31 @@ async def upload_image(
 @router.get("/jobs", response_model=list[JobSummary])
 def list_jobs(
     limit: int = 100,
+    before_id: int | None = Query(default=None, description="Phân trang theo cuộn: chỉ lấy job có id nhỏ hơn giá trị này"),
     conn: sqlite3.Connection = Depends(get_connection),
     user: UserOut = Depends(get_current_user),
 ):
-    """Thư viện ảnh đã upload. Lễ tân thấy của mình; admin/kế toán thấy tất cả."""
+    """Thư viện ảnh đã upload. Lễ tân thấy của mình; admin/kế toán thấy tất cả.
+
+    Sắp xếp id DESC; truyền before_id = id mục cuối trang trước để tải tiếp (cursor).
+    """
     limit = max(1, min(limit, 500))
     # reviewed: job đã có chứng từ (chưa xóa) được lưu -> đã được người kiểm duyệt.
     base = (
         "SELECT j.*, EXISTS(SELECT 1 FROM transactions t "
         "WHERE t.job_id = j.id AND t.deleted_at IS NULL) AS reviewed FROM jobs j"
     )
+    where: list[str] = []
+    params: list = []
     if user.role == "receptionist":
-        sql = f"{base} WHERE j.user_id = ? ORDER BY j.id DESC LIMIT ?"
-        params: tuple = (user.id, limit)
-    else:
-        sql = f"{base} ORDER BY j.id DESC LIMIT ?"
-        params = (limit,)
+        where.append("j.user_id = ?")
+        params.append(user.id)
+    if before_id is not None:
+        where.append("j.id < ?")
+        params.append(before_id)
+    where_sql = (" WHERE " + " AND ".join(where)) if where else ""
+    sql = f"{base}{where_sql} ORDER BY j.id DESC LIMIT ?"
+    params.append(limit)
     out: list[JobSummary] = []
     for row in conn.execute(sql, params).fetchall():
         n_rows = len(json.loads(row["result_json"])) if row["result_json"] else 0
@@ -309,6 +346,10 @@ def delete_job(
             Path(row["image_path"]).unlink(missing_ok=True)
         except OSError:
             pass
+    try:
+        _thumb_path(job_id).unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 @router.post("/jobs/{job_id}/reocr", response_model=JobResult)
@@ -355,6 +396,7 @@ def reocr_job(
 @router.get("/image/{job_id}")
 def get_job_image(
     job_id: int,
+    thumb: bool = Query(False, description="Trả ảnh thu nhỏ (nhẹ) cho lưới Thư viện"),
     conn: sqlite3.Connection = Depends(get_connection),
     user: UserOut = Depends(get_current_user),
 ):
@@ -366,4 +408,8 @@ def get_job_image(
     p = Path(row["image_path"])
     if not p.exists():
         raise HTTPException(status_code=404, detail="Ảnh không tồn tại")
-    return FileResponse(p)
+    if thumb:
+        t = _ensure_thumb(job_id, p)
+        if t is not None:
+            return FileResponse(t, media_type="image/jpeg", headers=_IMG_CACHE_HEADERS)
+    return FileResponse(p, headers=_IMG_CACHE_HEADERS)
