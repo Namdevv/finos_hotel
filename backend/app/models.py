@@ -134,6 +134,7 @@ class JobSummary(BaseModel):
     rotate: Optional[int] = None
     cancelled: bool = False
     n_rows: int = 0               # số dòng đã trích (nếu xong)
+    reviewed: bool = False        # đã có chứng từ được lưu từ job này -> "đã kiểm duyệt"
     image_path: Optional[str] = None
     created_at: str
     finished_at: Optional[str] = None

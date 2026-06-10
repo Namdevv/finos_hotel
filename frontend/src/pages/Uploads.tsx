@@ -37,7 +37,12 @@ function AuthImage({ src, alt }: { src: string; alt: string }) {
 
 function statusBadge(j: JobSummary) {
   if (j.cancelled || j.error === "Đã ngưng") return <Badge color="slate">Đã ngưng</Badge>;
-  if (j.status === "done") return <Badge color="green">Xong · {j.n_rows} dòng</Badge>;
+  if (j.status === "done")
+    return j.reviewed ? (
+      <Badge color="green">Đã kiểm duyệt · {j.n_rows} dòng</Badge>
+    ) : (
+      <Badge color="orange">Chờ kiểm · {j.n_rows} dòng</Badge>
+    );
   if (j.status === "failed") return <Badge color="red">Lỗi</Badge>;
   if (j.status === "processing") return <Badge color="blue">Đang xử lý…</Badge>;
   return <Badge color="amber">Trong hàng đợi</Badge>;
