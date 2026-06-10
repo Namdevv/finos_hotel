@@ -113,11 +113,16 @@ def list_jobs(
 ):
     """Thư viện ảnh đã upload. Lễ tân thấy của mình; admin/kế toán thấy tất cả."""
     limit = max(1, min(limit, 500))
+    # reviewed: job đã có chứng từ (chưa xóa) được lưu -> đã được người kiểm duyệt.
+    base = (
+        "SELECT j.*, EXISTS(SELECT 1 FROM transactions t "
+        "WHERE t.job_id = j.id AND t.deleted_at IS NULL) AS reviewed FROM jobs j"
+    )
     if user.role == "receptionist":
-        sql = "SELECT * FROM jobs WHERE user_id = ? ORDER BY id DESC LIMIT ?"
+        sql = f"{base} WHERE j.user_id = ? ORDER BY j.id DESC LIMIT ?"
         params: tuple = (user.id, limit)
     else:
-        sql = "SELECT * FROM jobs ORDER BY id DESC LIMIT ?"
+        sql = f"{base} ORDER BY j.id DESC LIMIT ?"
         params = (limit,)
     out: list[JobSummary] = []
     for row in conn.execute(sql, params).fetchall():
@@ -125,6 +130,7 @@ def list_jobs(
         out.append(JobSummary(
             id=row["id"], status=row["status"], stage=row["stage"], error=row["error"],
             rotate=row["rotate"], cancelled=bool(row["cancelled"]), n_rows=n_rows,
+            reviewed=bool(row["reviewed"]),
             image_path=f"/api/ocr/image/{row['id']}",
             created_at=row["created_at"], finished_at=row["finished_at"],
         ))

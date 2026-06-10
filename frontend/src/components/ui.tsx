@@ -69,6 +69,7 @@ const BADGE: Record<string, string> = {
   green: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
   red: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
   amber: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+  orange: "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
   blue: "bg-brand-50 text-brand-700 ring-1 ring-brand-200",
 };
 

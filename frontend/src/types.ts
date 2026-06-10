@@ -63,6 +63,7 @@ export interface JobSummary {
   rotate?: number | null;
   cancelled?: boolean;
   n_rows: number;
+  reviewed?: boolean;
   image_path?: string | null;
   created_at: string;
   finished_at?: string | null;
