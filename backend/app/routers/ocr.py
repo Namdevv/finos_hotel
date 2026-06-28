@@ -299,10 +299,12 @@ def delete_job(
     conn.commit()
 
     if row["image_path"]:
-        try:
-            Path(row["image_path"]).unlink(missing_ok=True)
-        except OSError:
-            pass
+        original = Path(row["image_path"])
+        for f in (original, _thumb_path(original)):
+            try:
+                f.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 @router.post("/jobs/{job_id}/reocr", response_model=JobResult)
@@ -346,9 +348,41 @@ def reocr_job(
     )
 
 
+# Cạnh dài tối đa của ảnh thu nhỏ dùng cho lưới Thư viện. Ảnh gốc tới 25MB nên
+# tuyệt đối không gửi nguyên bản cho thumbnail — sẽ nghẽn khi mở nhiều ảnh.
+_THUMB_MAX_SIDE = 480
+
+
+def _thumb_path(original: Path) -> Path:
+    """Đường dẫn file thumbnail cache cạnh ảnh gốc (vd abc.jpg -> abc.jpg.thumb.jpg)."""
+    return original.with_name(original.name + ".thumb.jpg")
+
+
+def _ensure_thumbnail(original: Path) -> Path:
+    """Trả về thumbnail đã cache; tạo lại nếu thiếu hoặc cũ hơn ảnh gốc.
+
+    Dùng Pillow (đã có sẵn) thu nhỏ về tối đa _THUMB_MAX_SIDE, tôn trọng EXIF
+    orientation cho khớp với khi xem ảnh đầy đủ. Lỗi tạo thumb -> trả ảnh gốc.
+    """
+    thumb = _thumb_path(original)
+    try:
+        if thumb.exists() and thumb.stat().st_mtime >= original.stat().st_mtime:
+            return thumb
+        from PIL import Image, ImageOps
+
+        with Image.open(original) as im:
+            im = ImageOps.exif_transpose(im).convert("RGB")
+            im.thumbnail((_THUMB_MAX_SIDE, _THUMB_MAX_SIDE))
+            im.save(thumb, format="JPEG", quality=80)
+        return thumb
+    except Exception:  # noqa: BLE001 - thumbnail là tối ưu, hỏng thì dùng ảnh gốc
+        return original
+
+
 @router.get("/image/{job_id}")
 def get_job_image(
     job_id: int,
+    thumb: bool = False,
     conn: sqlite3.Connection = Depends(get_connection),
     user: UserOut = Depends(get_current_user),
 ):
@@ -360,4 +394,8 @@ def get_job_image(
     p = Path(row["image_path"])
     if not p.exists():
         raise HTTPException(status_code=404, detail="Ảnh không tồn tại")
-    return FileResponse(p)
+    # Ảnh đã lưu là bất biến -> cho trình duyệt cache lâu, tránh tải lại mỗi lần render/poll.
+    headers = {"Cache-Control": "private, max-age=86400"}
+    if thumb:
+        return FileResponse(_ensure_thumbnail(p), media_type="image/jpeg", headers=headers)
+    return FileResponse(p, headers=headers)

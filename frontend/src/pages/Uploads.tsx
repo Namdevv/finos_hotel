@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getToken } from "../api";
 import { useAuth } from "../auth";
@@ -7,10 +7,36 @@ import { IconAlert, IconImage, IconTrash } from "../components/icons";
 import { fmtDateTime } from "../lib";
 import type { JobSummary } from "../types";
 
-/** Ảnh từ endpoint cần Bearer token -> tải bằng fetch rồi tạo object URL. */
+/**
+ * Ảnh từ endpoint cần Bearer token -> tải bằng fetch rồi tạo object URL.
+ * Chỉ tải khi ô vào viewport (lazy) để tránh bắn hàng loạt request cùng lúc khi
+ * thư viện có nhiều ảnh — nguyên nhân khiến lưới "đang tải" mãi không hiện.
+ */
 function AuthImage({ src, alt }: { src: string; alt: string }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  // Bật cờ visible khi ô lọt vào (gần) màn hình.
   useEffect(() => {
+    const el = wrap.current;
+    if (!el || visible) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisible(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
     let revoke: string | null = null;
     let alive = true;
     fetch(src, { headers: { Authorization: `Bearer ${getToken()}` } })
@@ -20,19 +46,28 @@ function AuthImage({ src, alt }: { src: string; alt: string }) {
         revoke = URL.createObjectURL(b);
         setUrl(revoke);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (alive) setFailed(true);
+      });
     return () => {
       alive = false;
       if (revoke) URL.revokeObjectURL(revoke);
     };
-  }, [src]);
-  if (!url)
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-300">
+  }, [src, visible]);
+
+  if (url) return <img src={url} alt={alt} className="h-full w-full object-cover" />;
+  return (
+    <div
+      ref={wrap}
+      className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-300"
+    >
+      {failed ? (
         <IconImage className="h-6 w-6" />
-      </div>
-    );
-  return <img src={url} alt={alt} className="h-full w-full object-cover" />;
+      ) : (
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-400" />
+      )}
+    </div>
+  );
 }
 
 function statusBadge(j: JobSummary) {
@@ -131,7 +166,7 @@ export default function Uploads() {
                 className="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-card transition-shadow hover:shadow-pop"
               >
                 <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100">
-                  <AuthImage src={`/api/ocr/image/${j.id}`} alt={`Ảnh sổ #${j.id}`} />
+                  <AuthImage src={`/api/ocr/image/${j.id}?thumb=1`} alt={`Ảnh sổ #${j.id}`} />
                 </div>
                 <div className="flex items-center justify-between gap-2 p-3">
                   <div className="min-w-0 space-y-1.5">
