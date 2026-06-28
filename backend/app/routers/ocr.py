@@ -27,6 +27,34 @@ router = APIRouter(prefix="/api/ocr", tags=["ocr"])
 
 _ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 _VALID_ROTATE = {0, 90, 180, 270}
+_THUMB_MAX = 480  # cạnh dài tối đa (px) của ảnh thu nhỏ cho lưới Thư viện
+# Bytes ảnh của 1 job không bao giờ đổi -> cho trình duyệt cache vĩnh viễn.
+_IMG_CACHE_HEADERS = {"Cache-Control": "private, max-age=31536000, immutable"}
+
+
+def _thumb_path(job_id: int) -> Path:
+    return get_settings().upload_path / "thumbs" / f"{job_id}.jpg"
+
+
+def _ensure_thumb(job_id: int, src: Path) -> Path | None:
+    """Tạo (nếu chưa có / cũ hơn ảnh gốc) ảnh thu nhỏ JPEG, cache ra đĩa.
+
+    Trả về đường dẫn thumbnail, hoặc None nếu tạo lỗi -> caller fallback ảnh gốc.
+    """
+    dst = _thumb_path(job_id)
+    try:
+        if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
+            return dst
+        from PIL import Image, ImageOps
+
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        with Image.open(src) as im:
+            im = ImageOps.exif_transpose(im)  # tôn trọng hướng EXIF như trình duyệt
+            im.thumbnail((_THUMB_MAX, _THUMB_MAX))
+            im.convert("RGB").save(dst, "JPEG", quality=80, optimize=True)
+        return dst
+    except Exception:
+        return None
 
 
 def _can_access(user: UserOut, owner_id: int) -> bool:
@@ -108,23 +136,38 @@ async def upload_image(
 @router.get("/jobs", response_model=list[JobSummary])
 def list_jobs(
     limit: int = 100,
+    before_id: int | None = Query(default=None, description="Phân trang theo cuộn: chỉ lấy job có id nhỏ hơn giá trị này"),
     conn: sqlite3.Connection = Depends(get_connection),
     user: UserOut = Depends(get_current_user),
 ):
-    """Thư viện ảnh đã upload. Lễ tân thấy của mình; admin/kế toán thấy tất cả."""
+    """Thư viện ảnh đã upload. Lễ tân thấy của mình; admin/kế toán thấy tất cả.
+
+    Sắp xếp id DESC; truyền before_id = id mục cuối trang trước để tải tiếp (cursor).
+    """
     limit = max(1, min(limit, 500))
+    # reviewed: job đã có chứng từ (chưa xóa) được lưu -> đã được người kiểm duyệt.
+    base = (
+        "SELECT j.*, EXISTS(SELECT 1 FROM transactions t "
+        "WHERE t.job_id = j.id AND t.deleted_at IS NULL) AS reviewed FROM jobs j"
+    )
+    where: list[str] = []
+    params: list = []
     if user.role == "receptionist":
-        sql = "SELECT * FROM jobs WHERE user_id = ? ORDER BY id DESC LIMIT ?"
-        params: tuple = (user.id, limit)
-    else:
-        sql = "SELECT * FROM jobs ORDER BY id DESC LIMIT ?"
-        params = (limit,)
+        where.append("j.user_id = ?")
+        params.append(user.id)
+    if before_id is not None:
+        where.append("j.id < ?")
+        params.append(before_id)
+    where_sql = (" WHERE " + " AND ".join(where)) if where else ""
+    sql = f"{base}{where_sql} ORDER BY j.id DESC LIMIT ?"
+    params.append(limit)
     out: list[JobSummary] = []
     for row in conn.execute(sql, params).fetchall():
         n_rows = len(json.loads(row["result_json"])) if row["result_json"] else 0
         out.append(JobSummary(
             id=row["id"], status=row["status"], stage=row["stage"], error=row["error"],
             rotate=row["rotate"], cancelled=bool(row["cancelled"]), n_rows=n_rows,
+            reviewed=bool(row["reviewed"]),
             image_path=f"/api/ocr/image/{row['id']}",
             created_at=row["created_at"], finished_at=row["finished_at"],
         ))
@@ -299,12 +342,14 @@ def delete_job(
     conn.commit()
 
     if row["image_path"]:
-        original = Path(row["image_path"])
-        for f in (original, _thumb_path(original)):
-            try:
-                f.unlink(missing_ok=True)
-            except OSError:
-                pass
+        try:
+            Path(row["image_path"]).unlink(missing_ok=True)
+        except OSError:
+            pass
+    try:
+        _thumb_path(job_id).unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 @router.post("/jobs/{job_id}/reocr", response_model=JobResult)
@@ -348,41 +393,10 @@ def reocr_job(
     )
 
 
-# Cạnh dài tối đa của ảnh thu nhỏ dùng cho lưới Thư viện. Ảnh gốc tới 25MB nên
-# tuyệt đối không gửi nguyên bản cho thumbnail — sẽ nghẽn khi mở nhiều ảnh.
-_THUMB_MAX_SIDE = 480
-
-
-def _thumb_path(original: Path) -> Path:
-    """Đường dẫn file thumbnail cache cạnh ảnh gốc (vd abc.jpg -> abc.jpg.thumb.jpg)."""
-    return original.with_name(original.name + ".thumb.jpg")
-
-
-def _ensure_thumbnail(original: Path) -> Path:
-    """Trả về thumbnail đã cache; tạo lại nếu thiếu hoặc cũ hơn ảnh gốc.
-
-    Dùng Pillow (đã có sẵn) thu nhỏ về tối đa _THUMB_MAX_SIDE, tôn trọng EXIF
-    orientation cho khớp với khi xem ảnh đầy đủ. Lỗi tạo thumb -> trả ảnh gốc.
-    """
-    thumb = _thumb_path(original)
-    try:
-        if thumb.exists() and thumb.stat().st_mtime >= original.stat().st_mtime:
-            return thumb
-        from PIL import Image, ImageOps
-
-        with Image.open(original) as im:
-            im = ImageOps.exif_transpose(im).convert("RGB")
-            im.thumbnail((_THUMB_MAX_SIDE, _THUMB_MAX_SIDE))
-            im.save(thumb, format="JPEG", quality=80)
-        return thumb
-    except Exception:  # noqa: BLE001 - thumbnail là tối ưu, hỏng thì dùng ảnh gốc
-        return original
-
-
 @router.get("/image/{job_id}")
 def get_job_image(
     job_id: int,
-    thumb: bool = False,
+    thumb: bool = Query(False, description="Trả ảnh thu nhỏ (nhẹ) cho lưới Thư viện"),
     conn: sqlite3.Connection = Depends(get_connection),
     user: UserOut = Depends(get_current_user),
 ):
@@ -394,8 +408,8 @@ def get_job_image(
     p = Path(row["image_path"])
     if not p.exists():
         raise HTTPException(status_code=404, detail="Ảnh không tồn tại")
-    # Ảnh đã lưu là bất biến -> cho trình duyệt cache lâu, tránh tải lại mỗi lần render/poll.
-    headers = {"Cache-Control": "private, max-age=86400"}
     if thumb:
-        return FileResponse(_ensure_thumbnail(p), media_type="image/jpeg", headers=headers)
-    return FileResponse(p, headers=headers)
+        t = _ensure_thumb(job_id, p)
+        if t is not None:
+            return FileResponse(t, media_type="image/jpeg", headers=_IMG_CACHE_HEADERS)
+    return FileResponse(p, headers=_IMG_CACHE_HEADERS)

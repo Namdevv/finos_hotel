@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getToken } from "../api";
 import { useAuth } from "../auth";
@@ -9,8 +9,8 @@ import type { JobSummary } from "../types";
 
 /**
  * Ảnh từ endpoint cần Bearer token -> tải bằng fetch rồi tạo object URL.
- * Chỉ tải khi ô vào viewport (lazy) để tránh bắn hàng loạt request cùng lúc khi
- * thư viện có nhiều ảnh — nguyên nhân khiến lưới "đang tải" mãi không hiện.
+ * Chỉ tải khi ô vào (gần) viewport (lazy) để tránh bắn hàng loạt request cùng lúc
+ * khi thư viện có nhiều ảnh — nguyên nhân khiến lưới "đang tải" mãi không hiện.
  */
 function AuthImage({ src, alt }: { src: string; alt: string }) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -55,7 +55,8 @@ function AuthImage({ src, alt }: { src: string; alt: string }) {
     };
   }, [src, visible]);
 
-  if (url) return <img src={url} alt={alt} className="h-full w-full object-cover" />;
+  if (url)
+    return <img src={url} alt={alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />;
   return (
     <div
       ref={wrap}
@@ -72,7 +73,12 @@ function AuthImage({ src, alt }: { src: string; alt: string }) {
 
 function statusBadge(j: JobSummary) {
   if (j.cancelled || j.error === "Đã ngưng") return <Badge color="slate">Đã ngưng</Badge>;
-  if (j.status === "done") return <Badge color="green">Xong · {j.n_rows} dòng</Badge>;
+  if (j.status === "done")
+    return j.reviewed ? (
+      <Badge color="green">Đã kiểm duyệt · {j.n_rows} dòng</Badge>
+    ) : (
+      <Badge color="orange">Chờ kiểm · {j.n_rows} dòng</Badge>
+    );
   if (j.status === "failed") return <Badge color="red">Lỗi</Badge>;
   if (j.status === "processing") return <Badge color="blue">Đang xử lý…</Badge>;
   return <Badge color="amber">Trong hàng đợi</Badge>;
@@ -82,35 +88,99 @@ function isRunning(j: JobSummary) {
   return !j.cancelled && (j.status === "queued" || j.status === "processing");
 }
 
+const PAGE = 12; // số ảnh tải mỗi lần (cuộn xuống để tải tiếp)
+
+/** Gộp 1 trang mới vào cuối, bỏ trùng id (phân trang). */
+function appendUnique(prev: JobSummary[], more: JobSummary[]) {
+  const seen = new Set(prev.map((j) => j.id));
+  return [...prev, ...more.filter((j) => !seen.has(j.id))];
+}
+
+/** Cập nhật trạng thái trang đầu (poll) + thêm ảnh mới, giữ thứ tự id giảm dần. */
+function mergeFresh(prev: JobSummary[], fresh: JobSummary[]) {
+  const byId = new Map<number, JobSummary>();
+  prev.forEach((j) => byId.set(j.id, j));
+  fresh.forEach((j) => byId.set(j.id, j));
+  return [...byId.values()].sort((a, b) => b.id - a.id);
+}
+
 export default function Uploads() {
   const nav = useNavigate();
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
   const [jobs, setJobs] = useState<JobSummary[] | null>(null);
   const [error, setError] = useState("");
+  const [hasMore, setHasMore] = useState(true);
+  const jobsRef = useRef<JobSummary[]>([]);
+  const loadingMore = useRef(false);
+  const sentinel = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    jobsRef.current = jobs ?? [];
+  }, [jobs]);
+
+  // Trang đầu.
+  useEffect(() => {
     let alive = true;
-    let timer: number | undefined;
-
-    async function load() {
-      try {
-        const next = await api.listJobs();
+    api
+      .listJobs({ limit: PAGE })
+      .then((first) => {
         if (!alive) return;
-        setJobs(next);
-        setError("");
-        if (next.some(isRunning)) timer = window.setTimeout(load, 3500);
-      } catch (e) {
-        if (alive) setError((e as Error).message);
-      }
-    }
-
-    load();
+        setJobs(first);
+        setHasMore(first.length === PAGE);
+      })
+      .catch((e) => alive && setError((e as Error).message));
     return () => {
       alive = false;
-      if (timer) window.clearTimeout(timer);
     };
   }, []);
+
+  // Tải thêm khi cuộn tới cuối.
+  const loadMore = useCallback(async () => {
+    if (loadingMore.current) return;
+    const cur = jobsRef.current;
+    if (cur.length === 0) return;
+    loadingMore.current = true;
+    try {
+      const next = await api.listJobs({ limit: PAGE, before_id: cur[cur.length - 1].id });
+      const merged = appendUnique(cur, next);
+      const added = merged.length - cur.length;
+      setJobs(merged);
+      // Dừng khi trang trả về < PAGE, HOẶC không thêm được id mới nào. Vế sau
+      // chống lặp "Đang tải thêm…" vô tận khi backend trả lại trang trùng.
+      setHasMore(next.length === PAGE && added > 0);
+      setError("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      loadingMore.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(
+      (entries) => entries[0].isIntersecting && loadMore(),
+      { rootMargin: "300px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore]);
+
+  // Còn job đang chạy -> poll lại TRANG ĐẦU để cập nhật trạng thái + bắt ảnh mới.
+  useEffect(() => {
+    if (!jobs || !jobs.some(isRunning)) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const fresh = await api.listJobs({ limit: PAGE });
+        setJobs((prev) => mergeFresh(prev ?? [], fresh));
+      } catch {
+        /* mạng chập chờn — lần poll sau thử lại */
+      }
+    }, 3500);
+    return () => window.clearTimeout(timer);
+  }, [jobs]);
 
   async function onCancel(e: React.MouseEvent, id: number) {
     e.stopPropagation();
@@ -200,6 +270,13 @@ export default function Uploads() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Cảm biến cuộn: lọt vào khung nhìn -> tải trang tiếp theo. */}
+      {jobs.length > 0 && hasMore && (
+        <div ref={sentinel} className="py-6">
+          <Spinner label="Đang tải thêm…" />
         </div>
       )}
     </div>

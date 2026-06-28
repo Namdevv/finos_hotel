@@ -126,7 +126,13 @@ export const api = {
     });
   },
   getJob: (id: number) => request<Job>(`/ocr/jobs/${id}`),
-  listJobs: () => request<JobSummary[]>("/ocr/jobs"),
+  listJobs: (params: { limit?: number; before_id?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set("limit", String(params.limit));
+    if (params.before_id != null) q.set("before_id", String(params.before_id));
+    const qs = q.toString();
+    return request<JobSummary[]>(`/ocr/jobs${qs ? `?${qs}` : ""}`);
+  },
   reocr: (id: number, rotate: number | null) =>
     request<Job>(`/ocr/jobs/${id}/reocr`, {
       method: "POST",

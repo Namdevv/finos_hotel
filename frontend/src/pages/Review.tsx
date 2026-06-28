@@ -40,6 +40,10 @@ export default function Review() {
   const [reocrNonce, setReocrNonce] = useState(0);
   const [bulkDate, setBulkDate] = useState(todayIso());
   const polling = useRef<number | null>(null);
+  const objUrls = useRef<string[]>([]);
+
+  // Thu hồi các object URL ảnh khi rời trang để khỏi rò bộ nhớ.
+  useEffect(() => () => objUrls.current.forEach(URL.revokeObjectURL), []);
 
   useEffect(() => {
     const id = Number(jobId);
@@ -83,11 +87,22 @@ export default function Review() {
     : NaN;
   const elapsed = Number.isNaN(startedMs) ? 0 : Math.max(0, Math.floor((now - startedMs) / 1000));
 
+  async function fetchBlobUrl(path: string): Promise<string | null> {
+    const res = await fetch(path, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) return null;
+    const u = URL.createObjectURL(await res.blob());
+    objUrls.current.push(u);
+    return u;
+  }
+
   async function loadImage(id: number) {
-    const res = await fetch(`/api/ocr/image/${id}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
+    // Ảnh thu nhỏ (thường đã cache từ Thư viện) hiện gần như tức thì làm nền.
+    fetchBlobUrl(`/api/ocr/image/${id}?thumb=1`).then((u) => {
+      if (u) setImgUrl((prev) => prev ?? u);
     });
-    if (res.ok) setImgUrl(URL.createObjectURL(await res.blob()));
+    // Sau đó nạp ảnh gốc nét để phóng to.
+    const full = await fetchBlobUrl(`/api/ocr/image/${id}`);
+    if (full) setImgUrl(full);
   }
 
   function update(i: number, patch: Partial<EditRow>) {
