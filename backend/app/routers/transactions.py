@@ -7,7 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from ..audit import log_activity
 from ..database import get_connection
 from ..deps import get_current_user, require_roles
-from ..models import BulkDeleteRequest, TransactionCreate, TransactionOut, TransactionUpdate, UserOut
+from ..models import (
+    BulkDeleteRequest,
+    BulkUpdateDateRequest,
+    TransactionCreate,
+    TransactionOut,
+    TransactionUpdate,
+    UserOut,
+)
 from ..notify import notify_admins
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
@@ -142,6 +149,34 @@ def update_transaction(
         conn.commit()
     row = conn.execute("SELECT * FROM transactions WHERE id = ?", (txn_id,)).fetchone()
     return _row_to_txn(row)
+
+
+@router.patch("", response_model=list[TransactionOut])
+def bulk_update_date(
+    body: BulkUpdateDateRequest,
+    conn: sqlite3.Connection = Depends(get_connection),
+    user: UserOut = Depends(editor),
+):
+    """Gán cùng một ngày cho nhiều chứng từ — sửa nhanh khi đã lưu nhầm chưa đổi ngày."""
+    placeholders = ",".join("?" * len(body.ids))
+    conn.execute(
+        f"UPDATE transactions SET txn_date=?, updated_at=datetime('now') "
+        f"WHERE deleted_at IS NULL AND id IN ({placeholders})",
+        [body.txn_date, *body.ids],
+    )
+    log_activity(
+        conn,
+        user,
+        "transaction.update_date_bulk",
+        target_type="transaction",
+        detail={"ids": body.ids, "txn_date": body.txn_date},
+    )
+    conn.commit()
+    rows = conn.execute(
+        f"SELECT * FROM transactions WHERE id IN ({placeholders}) ORDER BY txn_date DESC, id DESC",
+        body.ids,
+    ).fetchall()
+    return [_row_to_txn(r) for r in rows]
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)

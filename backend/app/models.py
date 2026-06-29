@@ -148,6 +148,11 @@ class BulkDeleteRequest(BaseModel):
     ids: list[int]
 
 
+class BulkUpdateDateRequest(BaseModel):
+    ids: list[int] = Field(min_length=1)
+    txn_date: str = Field(description="YYYY-MM-DD")
+
+
 # ----- Stats -----
 class StatsSummary(BaseModel):
     total_income: int

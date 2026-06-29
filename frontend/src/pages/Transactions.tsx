@@ -4,7 +4,7 @@ import { useAuth } from "../auth";
 import { Badge, Button, Card, Modal, Spinner } from "../components/ui";
 import { IconArrowDown, IconArrowUp, IconDots, IconFilter, IconPencil, IconPlus, IconTrash } from "../components/icons";
 import TransactionForm from "../components/TransactionForm";
-import { fmtVnd } from "../lib";
+import { fmtVnd, todayIso } from "../lib";
 import type { Transaction } from "../types";
 
 const PAGE_SIZE = 20;
@@ -65,6 +65,9 @@ export default function Transactions() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
+  const [bulkDateOpen, setBulkDateOpen] = useState(false);
+  const [bulkDate, setBulkDate] = useState(todayIso());
+  const [bulkDateSaving, setBulkDateSaving] = useState(false);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -118,6 +121,18 @@ export default function Transactions() {
     load();
   }
 
+  async function applyBulkDate() {
+    if (!selected.size || !bulkDate) return;
+    setBulkDateSaving(true);
+    try {
+      await api.bulkUpdateDate([...selected], bulkDate);
+      setBulkDateOpen(false);
+      load();
+    } finally {
+      setBulkDateSaving(false);
+    }
+  }
+
   const totalIncome = items?.filter((t) => t.kind === "income").reduce((s, t) => s + t.amount, 0) ?? 0;
   const totalExpense = items?.filter((t) => t.kind === "expense").reduce((s, t) => s + t.amount, 0) ?? 0;
 
@@ -142,6 +157,23 @@ export default function Transactions() {
         {editing && (
           <TransactionForm transaction={editing} onSaved={() => { setEditing(null); load(); }} />
         )}
+      </Modal>
+
+      {/* Modal sửa ngày hàng loạt */}
+      <Modal open={bulkDateOpen} onClose={() => setBulkDateOpen(false)} title={`Sửa ngày ${selected.size} chứng từ`}>
+        <p className="mb-3 text-sm text-slate-500">
+          Gán cùng một ngày cho {selected.size} chứng từ đã chọn — tiện khi lưu nhầm mà chưa sửa ngày.
+        </p>
+        <label className="block text-sm">
+          <span className="mb-1 block text-xs font-medium text-slate-500">Ngày mới</span>
+          <input type="date" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} className="field" />
+        </label>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setBulkDateOpen(false)}>Hủy</Button>
+          <Button onClick={applyBulkDate} disabled={!bulkDate || bulkDateSaving}>
+            {bulkDateSaving ? "Đang lưu…" : "Áp dụng"}
+          </Button>
+        </div>
       </Modal>
 
       {/* Thanh lọc */}
@@ -191,8 +223,14 @@ export default function Transactions() {
           {/* Tổng nhanh + thanh bulk action */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-1">
             {selected.size > 0 ? (
-              <div className="flex items-center gap-3 rounded-lg bg-brand-50 px-4 py-2">
+              <div className="flex flex-wrap items-center gap-3 rounded-lg bg-brand-50 px-4 py-2">
                 <span className="text-sm font-medium text-brand-700">Đã chọn {selected.size}</span>
+                {canEdit && (
+                  <Button variant="secondary" size="sm" onClick={() => setBulkDateOpen(true)}>
+                    <IconPencil className="h-3.5 w-3.5" />
+                    Sửa ngày
+                  </Button>
+                )}
                 {canDelete && (
                   <Button variant="danger" size="sm" onClick={bulkDelete}>
                     <IconTrash className="h-3.5 w-3.5" />

@@ -108,6 +108,11 @@ export const api = {
       method: "DELETE",
       body: JSON.stringify({ ids }),
     }),
+  bulkUpdateDate: (ids: number[], txn_date: string) =>
+    request<Transaction[]>("/transactions", {
+      method: "PATCH",
+      body: JSON.stringify({ ids, txn_date }),
+    }),
 
   // OCR — gửi ảnh GỐC (không nén) để giữ toàn vẹn cho VLM.
   // rotate: góc xoay khi upload (0/90/180/270); null = dùng mặc định cấu hình.
