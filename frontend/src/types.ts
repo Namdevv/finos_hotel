@@ -82,6 +82,21 @@ export interface StatsBucket {
   expense: number;
 }
 
+export interface Report {
+  id: number;
+  period: string; // 'YYYY-MM'
+  title: string;
+  total_income: number;
+  total_expense: number;
+  balance: number;
+  txn_count: number;
+  auto: boolean;
+  generated_by?: number | null;
+  generated_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const ROLE_LABEL: Record<Role, string> = {
   admin: "Quản trị",
   accountant: "Kế toán",

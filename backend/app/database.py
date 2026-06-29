@@ -37,6 +37,7 @@ def init_db() -> None:
     settings = get_settings()
     settings.db_file.parent.mkdir(parents=True, exist_ok=True)
     settings.upload_path.mkdir(parents=True, exist_ok=True)
+    settings.report_path.mkdir(parents=True, exist_ok=True)
 
     conn = _connect()
     try:

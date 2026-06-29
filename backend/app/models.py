@@ -167,6 +167,26 @@ class StatsBucket(BaseModel):
     expense: int
 
 
+# ----- Reports (báo cáo Excel theo tháng) -----
+class ReportOut(BaseModel):
+    id: int
+    period: str                  # 'YYYY-MM'
+    title: str
+    total_income: int
+    total_expense: int
+    balance: int
+    txn_count: int
+    auto: bool                   # True = hệ thống tự tạo cuối tháng
+    generated_by: Optional[int] = None
+    generated_by_name: str = ""  # snapshot tên người tạo (rỗng = hệ thống)
+    created_at: str
+    updated_at: str
+
+
+class ReportGenerateRequest(BaseModel):
+    period: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="Kỳ báo cáo 'YYYY-MM'")
+
+
 # ----- Activity -----
 class ActivityOut(BaseModel):
     id: int

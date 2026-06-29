@@ -222,3 +222,20 @@ export const IconX = (p: P) => (
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 );
+
+// Báo cáo — trang tài liệu có cột biểu đồ
+export const IconReport = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+    <path d="M14 2v6h6" />
+    <path d="M8 17v-3M12 17v-5M16 17v-2" />
+  </svg>
+);
+
+// Tải về — mũi tên xuống vào khay
+export const IconDownload = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="M7 10l5 5 5-5M12 15V3" />
+  </svg>
+);

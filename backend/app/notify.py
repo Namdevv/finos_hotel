@@ -25,6 +25,7 @@ PREFERENCE_LABELS = {
     "transaction": "Chứng từ",
     "user": "Tài khoản",
     "auth": "Đăng nhập",
+    "report": "Báo cáo",
     "system": "Hệ thống",
 }
 

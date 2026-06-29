@@ -12,6 +12,7 @@ env/
 *.db-wal
 *.db-shm
 backend/uploads/
+backend/reports/
 data/
 
 # Secrets

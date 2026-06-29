@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     access_token_minutes: int = 720
     db_path: str = "finos.db"
     upload_dir: str = "uploads"
+    report_dir: str = "reports"     # nơi lưu file .xlsx báo cáo tháng
+    hotel_name: str = "FinOS Hotel" # tên hiển thị trên đầu báo cáo Excel
+    auto_monthly_report: bool = True  # tự render báo cáo chốt cuối tháng
     timezone: str = "Asia/Ho_Chi_Minh"
     max_upload_mb: int = 25         # gửi ảnh gốc (không nén) nên cần dư dung lượng
     notification_retention_days: int = 180  # xóa thông báo đã đọc cũ hơn N ngày; <=0 để giữ mãi
@@ -43,6 +46,11 @@ class Settings(BaseSettings):
     @property
     def upload_path(self) -> Path:
         p = Path(self.upload_dir)
+        return p if p.is_absolute() else BASE_DIR / p
+
+    @property
+    def report_path(self) -> Path:
+        p = Path(self.report_dir)
         return p if p.is_absolute() else BASE_DIR / p
 
 

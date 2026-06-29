@@ -20,6 +20,8 @@ export const ACTION_LABEL: Record<string, string> = {
   "ocr.cancel": "Ngừng OCR",
   "ocr.reocr": "OCR lại",
   "ocr.delete": "Xóa ảnh OCR",
+  "report.generate": "Tạo báo cáo",
+  "report.delete": "Xóa báo cáo",
 };
 
 export function actionLabel(action: string) {

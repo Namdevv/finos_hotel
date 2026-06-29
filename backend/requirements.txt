@@ -16,5 +16,8 @@ argon2-cffi==23.1.0             # hash mật khẩu
 # Xử lý ảnh trước khi gửi VLM (xoay đúng chiều + thu nhỏ)
 Pillow==11.0.0
 
+# Xuất báo cáo Excel hàng tháng (thuần Python, không cần native deps)
+openpyxl==3.1.5
+
 # Web Push notification delivery (optional at runtime; used when FINOS_VAPID_* is configured)
 pywebpush==2.0.3

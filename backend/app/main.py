@@ -9,9 +9,10 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import BASE_DIR
 from .database import init_db
+from .jobs.report_scheduler import report_scheduler
 from .jobs.worker import worker
 from .push import push_worker
-from .routers import activities, auth, notifications, ocr, stats, transactions, users
+from .routers import activities, auth, notifications, ocr, reports, stats, transactions, users
 
 # Thư mục build của frontend (Vite -> dist). Có thể chưa tồn tại lúc dev.
 FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
@@ -22,7 +23,9 @@ async def lifespan(_app: FastAPI):
     init_db()        # tạo bảng + seed admin
     worker.start()   # khởi động worker OCR nền (1 thread, concurrency=1)
     push_worker.start()
+    report_scheduler.start()  # tự render báo cáo Excel chốt cuối tháng
     yield
+    report_scheduler.stop()
     push_worker.stop()
     worker.stop()
 
@@ -45,6 +48,7 @@ app.include_router(ocr.router)
 app.include_router(stats.router)
 app.include_router(activities.router)
 app.include_router(notifications.router)
+app.include_router(reports.router)
 
 
 @app.get("/api/health")

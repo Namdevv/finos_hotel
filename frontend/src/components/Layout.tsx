@@ -12,6 +12,7 @@ import {
   IconHistory,
   IconLogout,
   IconReceipt,
+  IconReport,
   IconUser,
 } from "./icons";
 
@@ -30,6 +31,7 @@ const NAV: NavItem[] = [
   { to: "/capture", label: "Chụp sổ", Icon: IconCamera, mobile: true },
   { to: "/uploads", label: "Thư viện", Icon: IconHistory },
   { to: "/transactions", label: "Chứng từ", Icon: IconReceipt, mobile: true },
+  { to: "/reports", label: "Báo cáo", Icon: IconReport, roles: ["admin", "accountant"] },
   { to: "/activities", label: "Hoạt động", Icon: IconActivity, roles: ["admin"] },
   { to: "/profile", label: "Hồ sơ", Icon: IconUser, mobile: true },
 ];
@@ -39,6 +41,7 @@ const TITLES: Record<string, string> = {
   "/capture": "Chụp / tải ảnh sổ",
   "/uploads": "Thư viện ảnh",
   "/transactions": "Chứng từ",
+  "/reports": "Báo cáo tháng",
   "/activities": "Hoạt động",
   "/notifications": "Thông báo",
   "/users": "Người dùng",

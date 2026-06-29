@@ -10,6 +10,8 @@ import tempfile
 _tmp = tempfile.mkdtemp(prefix="finos_test_")
 os.environ["FINOS_DB_PATH"] = os.path.join(_tmp, "test.db")
 os.environ["FINOS_UPLOAD_DIR"] = os.path.join(_tmp, "uploads")
+os.environ["FINOS_REPORT_DIR"] = os.path.join(_tmp, "reports")
+os.environ["FINOS_AUTO_MONTHLY_REPORT"] = "0"  # tắt scheduler để test xác định
 os.environ["FINOS_SECRET_KEY"] = "test-secret"
 os.environ["FINOS_ADMIN_USERNAME"] = "admin"
 os.environ["FINOS_ADMIN_PASSWORD"] = "admin123"
@@ -274,6 +276,31 @@ def main():
         check("balance = income - expense", s["balance"] == s["total_income"] - s["total_expense"])
         ts = c.get("/api/stats/timeseries?group=day", headers=h).json()
         check("timeseries có dữ liệu", len(ts) >= 1)
+
+        print("== Reports ==")
+        r = c.post("/api/reports", headers=h, json={"period": "2026-06"})
+        check("admin tạo báo cáo tháng (201)", r.status_code == 201)
+        rep = r.json()
+        check("báo cáo balance = thu - chi", rep["balance"] == rep["total_income"] - rep["total_expense"])
+        check("báo cáo không tự động (auto=False)", rep["auto"] is False)
+        report_id = rep["id"]
+        reps = c.get("/api/reports", headers=h).json()
+        check("danh sách có 1 báo cáo", len(reps) == 1)
+        # Tạo lại cùng kỳ -> ghi đè, không nhân đôi.
+        c.post("/api/reports", headers=h, json={"period": "2026-06"})
+        check("tạo lại cùng kỳ không nhân đôi", len(c.get("/api/reports", headers=h).json()) == 1)
+        dl = c.get(f"/api/reports/{report_id}/download", headers=h)
+        check("tải file xlsx (200)", dl.status_code == 200)
+        check("đúng content-type xlsx",
+              "spreadsheetml" in dl.headers.get("content-type", ""))
+        check("kỳ sai định dạng -> 422",
+              c.post("/api/reports", headers=h, json={"period": "2026-13"}).status_code == 422)
+        check("lễ tân KHÔNG xem báo cáo (403)",
+              c.get("/api/reports", headers=hr).status_code == 403)
+        check("lễ tân KHÔNG tạo báo cáo (403)",
+              c.post("/api/reports", headers=hr, json={"period": "2026-06"}).status_code == 403)
+        check("admin xóa báo cáo (204)",
+              c.delete(f"/api/reports/{report_id}", headers=h).status_code == 204)
 
     print(f"\n== KẾT QUẢ: {PASS} pass, {FAIL} fail ==")
     raise SystemExit(1 if FAIL else 0)

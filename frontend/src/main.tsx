@@ -14,6 +14,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Login = lazy(() => import("./pages/Login"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Reports = lazy(() => import("./pages/Reports"));
 const Review = lazy(() => import("./pages/Review"));
 const Transactions = lazy(() => import("./pages/Transactions"));
 const Uploads = lazy(() => import("./pages/Uploads"));
@@ -55,6 +56,14 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/uploads" element={<Uploads />} />
               <Route path="/review/:jobId" element={<Review />} />
               <Route path="/transactions" element={<Transactions />} />
+              <Route
+                path="/reports"
+                element={
+                  <Protected roles={["admin", "accountant"]}>
+                    <Reports />
+                  </Protected>
+                }
+              />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/profile" element={<Profile />} />
               <Route

@@ -67,6 +67,29 @@ CREATE INDEX IF NOT EXISTS idx_txn_date ON transactions(txn_date);
 CREATE INDEX IF NOT EXISTS idx_txn_kind ON transactions(kind);
 
 -- ---------------------------------------------------------------------------
+-- Báo cáo Excel theo tháng — mỗi tháng 1 bản (period 'YYYY-MM'), file .xlsx
+-- lưu ra đĩa. Bản chốt cuối tháng do hệ thống tự render; admin/kế toán có thể
+-- chủ động tạo lại bất cứ lúc nào (ghi đè bản cũ cùng tháng).
+-- auto: 1 = hệ thống tự tạo cuối tháng | 0 = người dùng bấm tạo.
+-- generated_by: NULL = hệ thống.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reports (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    period        TEXT NOT NULL,                          -- 'YYYY-MM'
+    title         TEXT NOT NULL DEFAULT '',
+    file_path     TEXT NOT NULL,
+    total_income  INTEGER NOT NULL DEFAULT 0,             -- VND
+    total_expense INTEGER NOT NULL DEFAULT 0,             -- VND
+    balance       INTEGER NOT NULL DEFAULT 0,             -- thu - chi
+    txn_count     INTEGER NOT NULL DEFAULT 0,
+    auto          INTEGER NOT NULL DEFAULT 0,
+    generated_by  INTEGER REFERENCES users(id),
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reports_period ON reports(period);
+
+-- ---------------------------------------------------------------------------
 -- Nhật ký hoạt động — tracking thao tác chính của nhân viên/kế toán/admin.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS activity_logs (

@@ -6,6 +6,7 @@ import type {
   NotificationPreference,
   PushKey,
   PushStatus,
+  Report,
   StatsBucket,
   StatsSummary,
   Transaction,
@@ -217,6 +218,42 @@ export const api = {
   timeseries: (params: Record<string, string> = {}) => {
     const q = new URLSearchParams(params).toString();
     return request<StatsBucket[]>(`/stats/timeseries${q ? `?${q}` : ""}`);
+  },
+
+  // Reports — báo cáo Excel theo tháng (admin & kế toán).
+  listReports: () => request<Report[]>("/reports"),
+  generateReport: (period: string) =>
+    request<Report>("/reports", { method: "POST", body: JSON.stringify({ period }) }),
+  deleteReport: (id: number) => request<void>(`/reports/${id}`, { method: "DELETE" }),
+  // Tải file .xlsx kèm bearer token rồi kích hoạt lưu về máy.
+  downloadReport: async (id: number, period: string) => {
+    const headers = new Headers();
+    const token = getToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    const res = await fetch(`/api/reports/${id}/download`, { headers });
+    if (res.status === 401) {
+      setToken(null);
+      if (location.pathname !== "/login") location.href = "/login";
+      throw new ApiError(401, "Phiên đăng nhập hết hạn");
+    }
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        detail = (await res.json()).detail ?? detail;
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(res.status, detail);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bao_cao_thu_chi_${period}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   },
 };
 
