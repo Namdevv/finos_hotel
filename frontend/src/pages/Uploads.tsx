@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, getToken } from "../api";
 import { useAuth } from "../auth";
-import { Badge, Card, PageHeader, Spinner } from "../components/ui";
+import { Badge, Button, Card, PageHeader, Spinner } from "../components/ui";
 import { IconAlert, IconImage, IconTrash } from "../components/icons";
 import { fmtDateTime } from "../lib";
 import type { JobSummary } from "../types";
@@ -111,9 +111,9 @@ export default function Uploads() {
   const [jobs, setJobs] = useState<JobSummary[] | null>(null);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const jobsRef = useRef<JobSummary[]>([]);
-  const loadingMore = useRef(false);
-  const sentinel = useRef<HTMLDivElement | null>(null);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     jobsRef.current = jobs ?? [];
@@ -135,38 +135,29 @@ export default function Uploads() {
     };
   }, []);
 
-  // Tải thêm khi cuộn tới cuối.
+  // Tải thêm khi bấm nút "Xem thêm".
   const loadMore = useCallback(async () => {
-    if (loadingMore.current) return;
+    if (loadingRef.current) return;
     const cur = jobsRef.current;
     if (cur.length === 0) return;
-    loadingMore.current = true;
+    loadingRef.current = true;
+    setLoadingMore(true);
     try {
       const next = await api.listJobs({ limit: PAGE, before_id: cur[cur.length - 1].id });
       const merged = appendUnique(cur, next);
       const added = merged.length - cur.length;
       setJobs(merged);
       // Dừng khi trang trả về < PAGE, HOẶC không thêm được id mới nào. Vế sau
-      // chống lặp "Đang tải thêm…" vô tận khi backend trả lại trang trùng.
+      // chống lặp tải vô tận khi backend trả lại trang trùng.
       setHasMore(next.length === PAGE && added > 0);
       setError("");
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      loadingMore.current = false;
+      loadingRef.current = false;
+      setLoadingMore(false);
     }
   }, []);
-
-  useEffect(() => {
-    const el = sentinel.current;
-    if (!el || !hasMore) return;
-    const io = new IntersectionObserver(
-      (entries) => entries[0].isIntersecting && loadMore(),
-      { rootMargin: "300px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, loadMore]);
 
   // Còn job đang chạy -> poll lại TRANG ĐẦU để cập nhật trạng thái + bắt ảnh mới.
   useEffect(() => {
@@ -273,10 +264,12 @@ export default function Uploads() {
         </div>
       )}
 
-      {/* Cảm biến cuộn: lọt vào khung nhìn -> tải trang tiếp theo. */}
+      {/* Bấm nút để tải thêm trang tiếp theo. */}
       {jobs.length > 0 && hasMore && (
-        <div ref={sentinel} className="py-6">
-          <Spinner label="Đang tải thêm…" />
+        <div className="flex justify-center py-6">
+          <Button variant="ghost" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? "Đang tải…" : "Xem thêm"}
+          </Button>
         </div>
       )}
     </div>
