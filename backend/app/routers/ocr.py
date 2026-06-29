@@ -278,6 +278,84 @@ def commit_job_rows(
     return [_row_to_txn(row) for row in rows]
 
 
+@router.get("/jobs/{job_id}/transactions", response_model=list[TransactionOut])
+def list_job_transactions(
+    job_id: int,
+    conn: sqlite3.Connection = Depends(get_connection),
+    user: UserOut = Depends(get_current_user),
+):
+    """Chứng từ (chưa xóa) đã lưu từ ảnh này — để xem lại đúng dữ liệu đã duyệt, không phải OCR gốc."""
+    job = conn.execute("SELECT user_id FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy job")
+    if not _can_access(user, job["user_id"]):
+        raise HTTPException(status_code=403, detail="Không có quyền với job này")
+    rows = conn.execute(
+        "SELECT * FROM transactions WHERE job_id = ? AND deleted_at IS NULL ORDER BY id",
+        (job_id,),
+    ).fetchall()
+    return [_row_to_txn(row) for row in rows]
+
+
+@router.put("/jobs/{job_id}/transactions", response_model=list[TransactionOut])
+def replace_job_transactions(
+    job_id: int,
+    body: OcrCommitRequest,
+    conn: sqlite3.Connection = Depends(get_connection),
+    user: UserOut = Depends(get_current_user),
+):
+    """Cập nhật lại toàn bộ chứng từ đã lưu từ ảnh này (thay cho bản cũ) trong một transaction DB.
+
+    Dùng khi mở lại ảnh đã lưu để sửa: bản trên màn hình trở thành bản chính thức.
+    """
+    job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy job")
+    if not _can_access(user, job["user_id"]):
+        raise HTTPException(status_code=403, detail="Không có quyền với job này")
+
+    txn_ids: list[int] = []
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        existing = conn.execute(
+            "SELECT COUNT(*) AS c FROM transactions WHERE job_id=? AND deleted_at IS NULL",
+            (job_id,),
+        ).fetchone()["c"]
+        if not existing:
+            raise HTTPException(status_code=409, detail="Ảnh này chưa được lưu thành chứng từ")
+        # Bỏ bản cũ rồi ghi lại bản đã sửa — giữ bảng transactions sạch (chỉ dữ liệu đang duyệt).
+        conn.execute("DELETE FROM transactions WHERE job_id=?", (job_id,))
+        for row in body.rows:
+            cur = conn.execute(
+                "INSERT INTO transactions (txn_date, room, note, kind, amount, source, job_id, image_path, created_by) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    row.txn_date, row.room, row.note, row.kind, row.amount,
+                    "ocr", job_id, f"/api/ocr/image/{job_id}", user.id,
+                ),
+            )
+            txn_ids.append(cur.lastrowid)
+        log_activity(
+            conn,
+            user,
+            "transaction.update",
+            target_type="job",
+            target_id=job_id,
+            detail={"source": "ocr", "count": len(txn_ids), "job_id": job_id, "replaced": True},
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+    placeholders = ",".join("?" * len(txn_ids))
+    rows = conn.execute(
+        f"SELECT * FROM transactions WHERE id IN ({placeholders}) ORDER BY id",
+        txn_ids,
+    ).fetchall()
+    return [_row_to_txn(row) for row in rows]
+
+
 @router.post("/jobs/{job_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)
 def cancel_job(
     job_id: int,

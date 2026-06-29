@@ -4,7 +4,7 @@ import { api, getToken } from "../api";
 import { Button, Card, Modal, Spinner } from "../components/ui";
 import { IconAlert, IconCheck, IconPlus, IconRefresh, IconTrash } from "../components/icons";
 import { LOW_CONF, fmtVnd, fmtVndInput, parseVnd, todayIso } from "../lib";
-import type { Job, JobStage, Kind, OcrRow } from "../types";
+import type { Job, JobStage, Kind, OcrRow, Transaction } from "../types";
 
 interface EditRow {
   txn_date: string;
@@ -26,6 +26,18 @@ function toEdit(r: OcrRow): EditRow {
   };
 }
 
+// Chứng từ đã lưu (đã được người duyệt) -> không cảnh báo độ tin cậy (conf = 1).
+function txnToEdit(t: Transaction): EditRow {
+  return {
+    txn_date: t.txn_date,
+    room: t.room,
+    note: t.note,
+    kind: t.kind,
+    amount: fmtVndInput(String(t.amount)),
+    conf: { date: 1, room: 1, amount: 1 },
+  };
+}
+
 export default function Review() {
   const { jobId } = useParams();
   const nav = useNavigate();
@@ -37,6 +49,8 @@ export default function Review() {
   const [now, setNow] = useState(() => Date.now());
   const [showReocr, setShowReocr] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const [hasSavedTxns, setHasSavedTxns] = useState(false); // ảnh đã có chứng từ -> lưu = ghi đè (PUT)
+  const [viewingSaved, setViewingSaved] = useState(false); // đang hiển thị dữ liệu đã lưu (không phải OCR gốc)
   const [reocrNonce, setReocrNonce] = useState(0);
   const [bulkDate, setBulkDate] = useState(todayIso());
   const polling = useRef<number | null>(null);
@@ -52,7 +66,19 @@ export default function Review() {
         const j = await api.getJob(id);
         setJob(j);
         if (j.status === "done") {
-          const edits = j.rows.map(toEdit);
+          let saved: Transaction[] = [];
+          try {
+            saved = await api.jobTransactions(id);
+          } catch {
+            /* không tải được -> coi như chưa lưu, hiện OCR gốc */
+          }
+          const hasSaved = saved.length > 0;
+          // Mở lại ảnh đã lưu (reocrNonce = 0) -> hiện đúng chứng từ đã duyệt.
+          // Vừa OCR lại trong phiên -> hiện kết quả OCR mới (nhưng lưu vẫn ghi đè bản cũ).
+          const showSaved = hasSaved && reocrNonce === 0;
+          const edits = showSaved ? saved.map(txnToEdit) : j.rows.map(toEdit);
+          setHasSavedTxns(hasSaved);
+          setViewingSaved(showSaved);
           setRows(edits);
           if (edits[0]?.txn_date) setBulkDate(edits[0].txn_date);
           loadImage(id);
@@ -129,6 +155,7 @@ export default function Review() {
     try {
       await api.reocr(Number(jobId), rotate);
       setRows([]);
+      setViewingSaved(false);
       setError("");
       setJob((j) => (j ? { ...j, status: "queued", stage: null, started_at: null } : j));
       setReocrNonce((n) => n + 1); // restart polling effect
@@ -149,17 +176,20 @@ export default function Review() {
   async function saveAll() {
     setSaving(true);
     setError("");
+    const payload = rows.map((r) => ({
+      txn_date: r.txn_date || todayIso(),
+      room: r.room,
+      note: r.note,
+      kind: r.kind,
+      amount: parseVnd(r.amount),
+    }));
     try {
-      await api.commitOcrJob(
-        Number(jobId),
-        rows.map((r) => ({
-          txn_date: r.txn_date || todayIso(),
-          room: r.room,
-          note: r.note,
-          kind: r.kind,
-          amount: parseVnd(r.amount),
-        })),
-      );
+      // Đã có chứng từ -> ghi đè bản cũ; lần đầu -> tạo mới.
+      if (hasSavedTxns) {
+        await api.updateJobTransactions(Number(jobId), payload);
+      } else {
+        await api.commitOcrJob(Number(jobId), payload);
+      }
       nav("/transactions");
     } catch (err) {
       setError((err as Error).message || "Lưu thất bại");
@@ -225,12 +255,21 @@ export default function Review() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-slate-500">Duyệt lại từng dòng trước khi lưu.</p>
+        <p className="text-sm text-slate-500">
+          {viewingSaved ? "Ảnh này đã được lưu — sửa lại rồi cập nhật nếu cần." : "Duyệt lại từng dòng trước khi lưu."}
+        </p>
         <Button variant="secondary" size="sm" onClick={() => setShowReocr(true)}>
           <IconRefresh className="h-4 w-4" />
           OCR lại
         </Button>
       </div>
+
+      {viewingSaved && (
+        <Card className="flex items-center gap-2 border-emerald-200 bg-emerald-50/60 !py-3 text-sm text-emerald-700">
+          <IconCheck className="h-4 w-4 shrink-0" />
+          Đang hiển thị dữ liệu đã lưu thành chứng từ. Sửa và bấm “Cập nhật” để ghi đè bản cũ.
+        </Card>
+      )}
 
       {lowCount > 0 && (
         <Card className="flex items-center gap-2 border-amber-200 bg-amber-50/60 !py-3 text-sm text-amber-700">
@@ -330,7 +369,7 @@ export default function Review() {
           </div>
           <Button onClick={saveAll} disabled={saving || rows.length === 0}>
             <IconCheck className="h-4 w-4" />
-            {saving ? "Đang lưu…" : "Lưu tất cả"}
+            {saving ? "Đang lưu…" : hasSavedTxns ? "Cập nhật" : "Lưu tất cả"}
           </Button>
         </Card>
       </div>

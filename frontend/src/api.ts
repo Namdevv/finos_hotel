@@ -154,6 +154,21 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ rows }),
     }),
+  // Chứng từ đã lưu từ một job (để mở lại ảnh thấy đúng dữ liệu đã duyệt, không phải OCR gốc).
+  jobTransactions: (id: number) =>
+    request<Transaction[]>(`/ocr/jobs/${id}/transactions`),
+  // Ghi đè toàn bộ chứng từ đã lưu từ job bằng bản đã sửa.
+  updateJobTransactions: (id: number, rows: Array<{
+    txn_date: string;
+    room: string;
+    note: string;
+    kind: string;
+    amount: number;
+  }>) =>
+    request<Transaction[]>(`/ocr/jobs/${id}/transactions`, {
+      method: "PUT",
+      body: JSON.stringify({ rows }),
+    }),
   cancelJob: (id: number) =>
     request<void>(`/ocr/jobs/${id}/cancel`, { method: "POST" }),
   deleteJob: (id: number, alsoDeleteTransactions = false) =>
