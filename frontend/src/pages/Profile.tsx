@@ -6,6 +6,7 @@ import { Badge, Button, Card, Input, Modal } from "../components/ui";
 import {
   IconActivity,
   IconChevronRight,
+  IconDashboard,
   IconHistory,
   IconKey,
   IconLock,
@@ -92,6 +93,14 @@ export default function Profile() {
         <div className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
           Tiện ích
         </div>
+        {hasRole("admin", "accountant") && (
+          <MenuRow
+            icon={<IconDashboard className="h-[18px] w-[18px]" />}
+            label="Báo cáo & thống kê"
+            desc="Tổng quan thu chi, biểu đồ"
+            onClick={() => nav("/")}
+          />
+        )}
         <MenuRow
           icon={<IconHistory className="h-[18px] w-[18px]" />}
           label="Thư viện ảnh"

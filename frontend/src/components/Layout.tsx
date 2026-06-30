@@ -53,7 +53,11 @@ export default function Layout() {
   useSystemNotifications(nav, !!user);
   const items = NAV.filter((n) => !n.roles || hasRole(...n.roles));
   const sidebarItems = items.filter((n) => n.to !== "/profile");
-  const mobileItems = items.filter((n) => n.mobile);
+  // Trên điện thoại của admin/kế toán, "Tổng quan" (báo cáo) được gom vào trang
+  // Hồ sơ để gọn thanh nav dưới — truy cập báo cáo qua menu trong Hồ sơ.
+  const mobileItems = items.filter(
+    (n) => n.mobile && !(n.to === "/" && hasRole("admin", "accountant")),
+  );
   const title =
     TITLES[loc.pathname] ?? (loc.pathname.startsWith("/review") ? "Duyệt & sửa chứng từ" : "FinOS Hotel");
   const initials = (user?.full_name || user?.username || "?").trim().charAt(0).toUpperCase();
