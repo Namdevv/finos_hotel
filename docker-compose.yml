@@ -8,7 +8,7 @@ services:
     image: finos-hotel:latest
     container_name: finos-hotel
     ports:
-      - "8000:8000"
+      - "8080:8000"
     env_file:
       - .env            # chứa FINOS_SECRET_KEY, FINOS_ADMIN_PASSWORD, ...
     volumes:

@@ -6,12 +6,12 @@ import { Badge, Button, Card, Input, Modal } from "../components/ui";
 import {
   IconActivity,
   IconChevronRight,
-  IconDashboard,
   IconHistory,
   IconKey,
   IconLock,
   IconLogout,
   IconPencil,
+  IconReport,
   IconShield,
   IconUsers,
 } from "../components/icons";
@@ -95,10 +95,10 @@ export default function Profile() {
         </div>
         {hasRole("admin", "accountant") && (
           <MenuRow
-            icon={<IconDashboard className="h-[18px] w-[18px]" />}
-            label="Báo cáo & thống kê"
-            desc="Tổng quan thu chi, biểu đồ"
-            onClick={() => nav("/")}
+            icon={<IconReport className="h-[18px] w-[18px]" />}
+            label="Báo cáo tháng"
+            desc="Báo cáo tổng hợp hàng tháng"
+            onClick={() => nav("/reports")}
           />
         )}
         <MenuRow
