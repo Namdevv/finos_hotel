@@ -1,18 +1,18 @@
-# Đóng góp cho FinOS Hotel
+# Contributing to FinOS Hotel
 
-Cảm ơn bạn quan tâm đến FinOS Hotel. Dự án ưu tiên các thay đổi nhỏ, rõ mục tiêu, dễ kiểm thử và giữ đúng nguyên tắc: OCR chỉ điền sẵn dữ liệu, con người luôn duyệt trước khi ghi vào chứng từ.
+Thank you for your interest in FinOS Hotel. The project prioritizes small, well-targeted, testable changes that adhere to the core principle: OCR only pre-fills data; a human must always review before writing to the accounting ledger.
 
-## Cách bắt đầu
+## Getting Started
 
-1. Fork repo và tạo branch mới từ `main`.
-2. Chạy backend/frontend theo hướng dẫn trong `README.md`.
-3. Với backend trên Windows, bật UTF-8 khi chạy smoke test:
+1. Fork the repo and create a new branch from `main`.
+2. Run backend/frontend according to the instructions in `README.md`.
+3. For the backend on Windows, enable UTF-8 when running the smoke test:
 
 ```powershell
 $env:PYTHONUTF8=1; .\.venv\Scripts\python.exe -m tests.smoke_test
 ```
 
-4. Với frontend:
+4. For the frontend:
 
 ```powershell
 cd frontend
@@ -20,14 +20,14 @@ npm install
 npm run build
 ```
 
-## Quy ước thay đổi
+## Change Guidelines
 
-- Giữ tài liệu, comment và UI bằng tiếng Việt nếu đang sửa phần đã dùng tiếng Việt.
-- Không commit `.env`, database, ảnh upload thật, log hoặc dữ liệu khách sạn thật.
-- Không để OCR ghi trực tiếp vào bảng `transactions`; mọi dữ liệu từ model phải đi qua màn duyệt.
-- Với thay đổi backend, chạy smoke test. Với thay đổi frontend, chạy `npm run build`.
-- Pull request nên mô tả ngắn: vấn đề, cách sửa, cách đã kiểm thử và ảnh/chụp màn hình nếu đổi UI.
+- Maintain documentation, comments, and UI in English.
+- Do not commit `.env`, databases, real uploaded images, logs, or real hotel data.
+- Do not let OCR write directly to the `transactions` table; all data from the model must go through the review screen.
+- For backend changes, run the smoke test. For frontend changes, run `npm run build`.
+- Pull requests should be brief: describe the problem, the fix, how it was tested, and include screenshots if UI is changed.
 
-## Dữ liệu mẫu
+## Sample Data
 
-Chỉ dùng dữ liệu giả hoặc ảnh đã được làm sạch thông tin nhận dạng. Nếu cần minh họa lỗi OCR, hãy che tên khách, số điện thoại, mã đặt phòng và mọi dữ liệu tài chính nhạy cảm.
+Use only dummy data or images that have been stripped of identifiable information. If you need to illustrate an OCR error, mask guest names, phone numbers, booking codes, and any sensitive financial data.

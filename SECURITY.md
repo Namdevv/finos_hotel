@@ -1,30 +1,30 @@
-# Chính sách bảo mật
+# Security Policy
 
-FinOS Hotel xử lý ảnh sổ thu-chi và dữ liệu tài chính nội bộ, nên vui lòng báo cáo lỗ hổng theo kênh riêng thay vì tạo public issue.
+FinOS Hotel processes receipt/ledger images and internal financial data, so please report vulnerabilities via private channels instead of creating a public issue.
 
-## Báo cáo lỗ hổng
+## Reporting a Vulnerability
 
-Gửi email tới `namtran34311@gmail.com` với tiêu đề bắt đầu bằng `[SECURITY] FinOS Hotel`.
+Send an email to `namtran34311@gmail.com` with a subject starting with `[SECURITY] FinOS Hotel`.
 
-Vui lòng kèm:
+Please include:
 
-- Mô tả ngắn về lỗ hổng và tác động.
-- Các bước tái hiện tối thiểu.
-- Phiên bản commit/tag hoặc môi trường triển khai liên quan.
-- Bằng chứng ở mức cần thiết, không gửi dữ liệu khách sạn thật nếu không bắt buộc.
+- A brief description of the vulnerability and its impact.
+- Minimal steps to reproduce the issue.
+- Relevant commit/tag version or deployment environment.
+- Necessary proof of concept (do not send real hotel data unless absolutely required).
 
-## Phạm vi ưu tiên
+## Priority Scope
 
-- Rò rỉ hoặc bỏ qua xác thực/phân quyền.
-- Truy cập trái phép ảnh upload, database hoặc dữ liệu giao dịch.
-- Lỗi cho phép ghi chứng từ mà không qua bước duyệt của con người.
-- RCE, path traversal, SSRF hoặc upload file nguy hiểm.
-- Lộ secret, token, mật khẩu hoặc cấu hình triển khai.
+- Authentication/authorization bypass or leakage.
+- Unauthorized access to uploaded images, database, or transaction data.
+- Bugs allowing ledger entries to be written without human review.
+- RCE, path traversal, SSRF, or malicious file uploads.
+- Exposure of secrets, tokens, passwords, or deployment configurations.
 
-## Khuyến nghị triển khai
+## Deployment Recommendations
 
-- Luôn đổi `FINOS_SECRET_KEY` và `FINOS_ADMIN_PASSWORD` trước khi dùng thật.
-- Không publish `.env`, database, volume `/data`, ảnh upload hoặc log sản xuất.
-- Dùng HTTPS nếu truy cập ngoài `localhost`, đặc biệt khi dùng camera/PWA qua trình duyệt.
-- Hạn chế truy cập `FINOS_OLLAMA_HOST` trong mạng tin cậy; không mở service model ra Internet nếu không có lớp bảo vệ riêng.
-- Sao lưu và kiểm soát quyền truy cập volume chứa SQLite/ảnh upload như dữ liệu tài chính thật.
+- Always change `FINOS_SECRET_KEY` and `FINOS_ADMIN_PASSWORD` before production use.
+- Do not publish `.env`, database, `/data` volumes, uploaded images, or production logs.
+- Use HTTPS if accessing outside `localhost`, especially when using the camera/PWA via browsers.
+- Restrict access to `FINOS_OLLAMA_HOST` within trusted networks; do not expose the model service to the Internet without a dedicated protection layer.
+- Back up and control access to the volume containing SQLite/uploaded images as you would with real financial data.

@@ -5,17 +5,17 @@
 <h1 align="center">FinOS Hotel</h1>
 
 <p align="center">
-  <em>Số hóa sổ thu–chi viết tay của khách sạn bằng AI — chụp ảnh, OCR đọc số liệu, con người duyệt, lưu thành chứng từ kế toán.</em>
+  <em>Digitizing handwritten hotel ledgers with AI — photo capture, OCR extraction, human review, and save as accounting records.</em>
 </p>
 
 <p align="center">
-  <a href="#-tính-năng-chính">Tính năng</a> ·
-  <a href="#-luồng-hoạt-động">Workflow</a> ·
-  <a href="#-kiến-trúc">Kiến trúc</a> ·
-  <a href="#-chạy-với-docker">Cài đặt</a> ·
-  <a href="#-công-nghệ">Công nghệ</a> ·
-  <a href="#-hạn-chế-hiện-biết">Hạn chế</a> ·
-  <a href="#-liên-hệ">Liên hệ</a>
+  <a href="#-features">Features</a> ·
+  <a href="#-workflow">Workflow</a> ·
+  <a href="#-architecture">Architecture</a> ·
+  <a href="#-docker-installation">Installation</a> ·
+  <a href="#-technology-stack">Tech Stack</a> ·
+  <a href="#-known-limitations">Limitations</a> ·
+  <a href="#-contact">Contact</a>
 </p>
 
 <p align="center">
@@ -32,162 +32,182 @@
 
 ![FinOS Hotel demo](docs/demo/finos-hotel-demo.gif)
 
-> ▶️ [Xem demo tương tác trên Arcade](https://demo.arcade.software/U6tJGPlmO47885VT3Ya4)
+> ▶️ [View interactive demo on Arcade](https://demo.arcade.software/U6tJGPlmO47885VT3Ya4)
 
 
-## 📖 Giới thiệu
+## 📖 Introduction
 
-**FinOS Hotel** là ứng dụng nội bộ giúp khách sạn số hóa sổ thu–chi viết tay. Thay vì gõ lại từng dòng từ sổ giấy, nhân viên chỉ cần **chụp ảnh trang sổ**; hệ thống dùng mô hình thị giác (VLM) để đọc dữ liệu, rồi người dùng **kiểm tra, chỉnh sửa và xác nhận** trước khi lưu thành chứng từ kế toán.
+**FinOS Hotel** is an internal application that helps hotels digitize handwritten income/expense ledgers. Instead of retyping every line from paper, staff only need to **take a photo of the ledger page**; the system uses a Vision Language Model (VLM) to read the data, and then users **check, edit, and approve** before saving it as an accounting record.
 
-Dự án được thiết kế để **self-host bằng Docker** trong LAN hoặc VPS. Phần OCR nặng (Ollama) chạy trên cloud **miễn phí** — không cần GPU hay đầu tư phần cứng riêng.
+The project is designed to be **self-hosted with Docker** in a LAN or VPS. The heavy OCR component (Ollama) runs on the cloud **for free** — no GPU or dedicated hardware investment required.
 
-> ### 🔒 Nguyên tắc bất biến
-> **OCR chỉ *điền sẵn* biểu mẫu — không bao giờ tự ghi thẳng vào sổ kế toán.**
-> Chữ viết tay không đủ tin cậy. Pipeline trả về *các dòng đề xuất* kèm độ tin cậy từng trường; bảng `transactions` **chỉ chứa dữ liệu đã được con người phê duyệt**.
+> ### 🔒 Core Principle
+> **OCR only *pre-fills* the form — it never writes directly to the accounting ledger.**
+> Handwriting is not reliable enough. The pipeline returns *suggested rows* with per-field confidence; the `transactions` table **only holds human-approved data**.
 
 
-## ✨ Tính năng chính
+## ✨ Features
 
-| | Tính năng | Mô tả |
+| | Feature | Description |
 |---|---|---|
-| 📸 | **Chụp & tải ảnh** | Mở camera điện thoại hoặc chọn ảnh có sẵn; xoay ảnh trước khi OCR. |
-| 🤖 | **OCR sổ viết tay** | Mô hình thị giác Gemma 4 31B đọc nguyên trang sổ, kể cả số tiền khoanh tròn. |
-| ✅ | **Duyệt song song ảnh gốc** | So sánh ảnh thật với từng dòng được đọc; sửa ngày, phòng, nội dung, số tiền. |
-| 🔄 | **OCR lại** | Chạy lại với góc xoay khác khi ảnh nghiêng/đọc thiếu dòng. |
-| 📚 | **Thư viện upload** | Xem lại lịch sử ảnh đã OCR, trạng thái job, chạy lại hoặc xóa. |
-| 📊 | **Dashboard & báo cáo** | Tổng thu, tổng chi, chênh lệch; biểu đồ theo ngày/tháng. |
-| 👥 | **Phân quyền (RBAC)** | 3 vai trò `admin` / `accountant` / `receptionist`, gác ở cả API lẫn UI. |
-| 🧾 | **Nhật ký hoạt động** | Theo dõi thao tác quan trọng trong hệ thống (admin). |
-| 📱 | **PWA cài đặt được** | Dùng như app trên điện thoại, hỗ trợ chụp ảnh trực tiếp. |
+| 📸 | **Capture & Upload** | Open phone camera or select existing photos; rotate images before OCR. |
+| 🤖 | **Handwriting OCR** | Gemma 4 31B vision model reads the whole page, including circled amounts. |
+| ✅ | **Side-by-side Review** | Compare the original photo with read rows; edit date, room, note, amount. |
+| 🔄 | **Re-OCR** | Re-run with a different rotation angle for skewed images/missed rows. |
+| 📚 | **Upload Library** | Review OCR history, job status, retry, or delete. |
+| 📊 | **Dashboard & Reports** | Total income, expense, balance; daily/monthly charts. |
+| 👥 | **Role-Based Access (RBAC)** | 3 roles: `admin` / `accountant` / `receptionist`, guarded at both API & UI levels. |
+| 🧾 | **Activity Log** | Track important operations in the system (admin). |
+| 📱 | **Installable PWA** | Use like a native app on mobile, supports direct camera capture. |
+
+<br/>
+
+## 🚀 Changelog
+
+<details>
+<summary><b>v1.1.0 (Latest Release)</b></summary>
+
+- **[Major Feature] Automated Monthly Reports:** Support creating, managing, and automatically summarizing monthly income/expense data into professional Excel files.
+- **[Mobile UI/UX Optimization]** Improved mobile interface: Optimized navigation bar and consolidated the Reports feature into the Profile section for Admin/Accountant for easier access.
+- Updated and expanded the API system to better support the OCR workflow and transaction management.
+
+</details>
+
+<details>
+<summary><b>v1.0.0 (Initial Release)</b></summary>
+
+- Launched AI-powered internal hotel ledger digitization system (Gemma 4).
+- Core features: photo capture, OCR extraction, human review, and 3-level RBAC.
+
+</details>
 
 
+## 🔄 Workflow
 
-## 🔄 Luồng hoạt động
-
-Từ trang sổ giấy đến chứng từ kế toán chỉ qua 4 bước — và **con người luôn là chốt chặn cuối**:
+From paper ledger to accounting records in just 4 steps — and **a human is always the final gatekeeper**:
 
 ```mermaid
 flowchart LR
-    A["📸 Chụp ảnh<br/>trang sổ"] --> B["🤖 AI đọc số liệu<br/>(OCR/VLM)"]
-    B --> C["✅ Người dùng duyệt<br/>& chỉnh sửa"]
-    C --> D["🧾 Lưu thành<br/>chứng từ"]
-    D --> E["📊 Báo cáo<br/>thu · chi · lãi"]
+    A["📸 Capture photo<br/>of ledger"] --> B["🤖 AI reads data<br/>(OCR/VLM)"]
+    B --> C["✅ Human reviews<br/>& edits"]
+    C --> D["🧾 Save as<br/>record"]
+    D --> E["📊 Reports<br/>income/expense"]
 ```
 
-1. **Chụp** — nhân viên chụp hoặc tải ảnh trang sổ từ điện thoại/máy tính.
-2. **Đọc** — mô hình thị giác đọc cả trang, tách thành các dòng giao dịch *đề xuất* kèm độ tin cậy.
-3. **Duyệt** — người dùng xem ảnh gốc song song với kết quả, sửa ngày/phòng/nội dung/số tiền, thêm hoặc bớt dòng. Ảnh nghiêng có thể OCR lại với góc xoay khác.
-4. **Lưu & báo cáo** — chỉ dòng đã duyệt mới trở thành chứng từ chính thức; dashboard & báo cáo lấy số liệu từ đây.
+1. **Capture** — Staff capture or upload a ledger photo from a phone/computer.
+2. **Read** — Vision model reads the entire page, extracting *suggested* transaction rows with confidence scores.
+3. **Review** — User views the original photo side-by-side with results, edits date/room/note/amount, adds or removes rows. Skewed photos can be re-OCRed with a different rotation.
+4. **Save & Report** — Only approved rows become official records; dashboard & reports pull data from here.
 
-> 🔒 **AI chỉ điền sẵn — không tự ghi sổ.** Chữ viết tay không đủ tin cậy, nên bước duyệt của con người là bắt buộc.
+> 🔒 **AI only pre-fills — it does not auto-record.** Handwriting is not reliable enough, so human review is mandatory.
 
 
 
-## 🏗 Kiến trúc
+## 🏗 Architecture
 
-**Một tiến trình FastAPI duy nhất, không dịch vụ ngoài** — không Redis/Celery/Postgres, hàng đợi job chính là một bảng SQLite. Toàn bộ chạy offline trong mạng LAN.
+**A single FastAPI process, no external services** — no Redis/Celery/Postgres, the job queue is a SQLite table. Everything runs offline in the LAN.
 
 ```mermaid
 flowchart LR
-    subgraph Client["📱 Thiết bị trong LAN"]
-        UI["React PWA<br/>(chụp · duyệt · báo cáo)"]
+    subgraph Client["📱 Devices in LAN"]
+        UI["React PWA<br/>(capture · review · reports)"]
     end
 
-    subgraph Server["🖥 Máy chủ FastAPI"]
+    subgraph Server["🖥 FastAPI Server"]
         API["REST API"]
-        Worker["OCR Worker<br/>(hàng đợi 1 thread)"]
+        Worker["OCR Worker<br/>(1-thread queue)"]
         DB[("SQLite · WAL")]
     end
 
-    subgraph Cloud["☁️ Cloud (Ollama — miễn phí)"]
+    subgraph Cloud["☁️ Cloud (Ollama — free)"]
         Ollama["Ollama<br/>Gemma 4 31B"]
     end
 
     UI -- "/api" --> API
     API <--> DB
     Worker -- "poll job" --> DB
-    Worker -- "ảnh gốc (HTTPS)" --> Ollama
+    Worker -- "original image (HTTPS)" --> Ollama
     Ollama -- "JSON" --> Worker
 ```
 
-- **Backend siêu nhẹ** — chỉ gọi HTTP + xử lý ảnh bằng Pillow, không torch/onnx/opencv. OCR nặng được tách hoàn toàn ra Ollama chạy trên cloud (miễn phí).
-- **Vì sao dùng VLM?** Sổ viết tay có tổng tiền *khoanh tròn* — OCR cổ điển bỏ sót cả cột số tiền; mô hình thị giác đọc cả trang một cách toàn cục.
-- **Concurrency cố tình bằng 1** — không bao giờ xử lý hai ảnh cùng lúc, tránh quá tải.
+- **Ultra-lightweight Backend** — Only handles HTTP + image processing via Pillow, no torch/onnx/opencv. Heavy OCR is entirely offloaded to Ollama running on the cloud (free).
+- **Why VLM?** Handwritten ledgers often have circled total amounts; classic OCR misses the entire amount column. Vision models read the whole page holistically.
+- **Concurrency strictly set to 1** — Never process two images simultaneously to prevent overloading.
 
 
 
-## 🐳 Chạy với Docker
+## 🐳 Docker Installation
 
-> Đây là cách triển khai được khuyến nghị — một lệnh dựng cả API lẫn UI.
+> This is the recommended deployment method — one command sets up both API and UI.
 
-**Yêu cầu:** Docker + Docker Compose đã cài, và một instance Ollama đang chạy (trên cloud hoặc máy local).
+**Requirements:** Docker + Docker Compose installed, and a running Ollama instance (cloud or local).
 
 ```bash
-# 0. Chuẩn bị model OCR mặc định trên máy Ollama
+# 0. Prepare the default OCR model on your Ollama machine
 ollama pull gemma4:31b-cloud
 
-# 1. Sao chép file cấu hình
+# 1. Copy the configuration file
 cp .env.example .env
 
-# 2. Mở .env, đổi hai giá trị bắt buộc:
-#    FINOS_SECRET_KEY   — chuỗi ngẫu nhiên, giữ bí mật
-#    FINOS_ADMIN_PASSWORD — mật khẩu tài khoản admin
-#    FINOS_OLLAMA_HOST  — địa chỉ Ollama (ví dụ: https://your-ollama.cloud)
-#    FINOS_OCR_MODEL    — mặc định gemma4:31b-cloud
+# 2. Open .env, change the two required values:
+#    FINOS_SECRET_KEY   — random string, keep secret
+#    FINOS_ADMIN_PASSWORD — admin account password
+#    FINOS_OLLAMA_HOST  — Ollama address (e.g., https://your-ollama.cloud)
+#    FINOS_OCR_MODEL    — default is gemma4:31b-cloud
 
-# 3. Build và chạy
+# 3. Build and run
 docker compose up -d --build
 ```
 
-Sau khi khởi động, truy cập **`http://localhost:8000`** (hoặc IP máy chủ nếu dùng trong LAN).
+After startup, access **`http://localhost:8000`** (or server IP if used within LAN).
 
-> Dữ liệu (DB + ảnh upload) được lưu vào Docker volume `finos_data` — bền vững qua các lần rebuild.
+> Data (DB + uploaded images) is saved to Docker volume `finos_data` — persistent across rebuilds.
 
 
-## 🧰 Công nghệ
+## 🧰 Technology Stack
 
-| Lớp | Công nghệ |
+| Layer | Technology |
 |---|---|
 | **Frontend** | React 18 · Vite 5 · TypeScript · Tailwind CSS · React Router · Recharts · PWA |
 | **Backend** | FastAPI · Pydantic v2 · Uvicorn · Pillow |
 | **Auth** | JWT (HS256, PyJWT) · Argon2 (argon2-cffi) |
-| **Database** | SQLite (WAL mode, `busy_timeout=30s`) — tiền lưu dạng số nguyên VND |
-| **OCR / AI** | Ollama + Gemma 4 31B (vision, `format:"json"`, `temperature:0`) — chạy trên cloud miễn phí |
-| **Đóng gói** | Docker — một image phục vụ cả API và UI từ cổng 8000 |
+| **Database** | SQLite (WAL mode, `busy_timeout=30s`) — money stored as VND integers |
+| **OCR / AI** | Ollama + Gemma 4 31B (vision, `format:"json"`, `temperature:0`) — runs free on cloud |
+| **Deployment** | Docker — a single image serves both API and UI on port 8000 |
 
 
 
-## ⚠️ Hạn chế hiện biết
+## ⚠️ Known Limitations
 
-- OCR phụ thuộc chất lượng ảnh, góc xoay, nét chữ và model VLM đang chạy; mọi dòng OCR phải được người dùng duyệt lại trước khi lưu.
-- Hàng đợi OCR cố tình chạy concurrency = 1 để tránh quá tải model; hệ thống không tối ưu cho nhiều khách sạn hoặc nhiều ca OCR song song. (nếu có nhu cầu số hóa lớn hơn liên hệ với tôi)
-- SQLite phù hợp triển khai nhỏ trong LAN/VPS đơn lẻ; nếu cần đa chi nhánh, nhiều máy ghi đồng thời hoặc HA thì nên thiết kế lại tầng dữ liệu.
-- Ứng dụng chưa thay thế quy trình kế toán chính thức; cần đối soát chứng từ gốc và tuân thủ quy định lưu trữ dữ liệu tại nơi triển khai.
-- PWA/camera hoạt động tốt nhất trên `localhost` hoặc HTTPS. Khi dùng qua LAN bằng IP nội bộ, một số trình duyệt có thể hạn chế quyền camera/thông báo.
+- OCR depends on image quality, rotation angle, handwriting, and the active VLM model; all OCR rows must be reviewed by the user before saving.
+- The OCR queue intentionally runs with concurrency = 1 to avoid model overload; the system is not optimized for multiple hotels or many parallel OCR sessions. (Contact me if you need larger scale digitization).
+- SQLite is suitable for small LAN/VPS deployments; if you need multiple branches, concurrent heavy writes, or HA, the data layer should be redesigned.
+- The app does not replace official accounting procedures; original receipts must be verified and local data retention regulations followed.
+- PWA/camera works best on `localhost` or HTTPS. When using LAN IP, some browsers may restrict camera/notification permissions.
 
 
 
-## 👥 Vai trò & phân quyền
+## 👥 Roles & Permissions
 
-| Vai trò | Quyền |
+| Role | Permissions |
 |---|---|
-| `admin` | Toàn quyền · quản lý người dùng · báo cáo · nhật ký hoạt động · xóa dữ liệu. |
-| `accountant` | Nhập / duyệt / sửa chứng từ · xóa mềm · xem báo cáo. |
-| `receptionist` (lễ tân) | Chụp & OCR · tạo/xem/sửa chứng từ (không xóa) · dashboard chỉ tổng trong ngày · chỉ thấy job OCR của mình. |
+| `admin` | Full access · manage users · reports · activity log · delete data. |
+| `accountant` | Enter / approve / edit records · soft delete · view reports. |
+| `receptionist` | Capture & OCR · create/view/edit records (no delete) · dashboard limited to daily total · can only see own OCR jobs. |
 
-> 🚀 Dự án được đóng gói bằng **Docker** — triển khai trong LAN hoặc VPS, OCR chạy miễn phí trên cloud.
+> 🚀 The project is packaged using **Docker** — deploy in LAN or VPS, OCR runs free on the cloud.
 
 
-## 📬 Liên hệ
+## 📬 Contact
 
-README này chỉ giới thiệu tổng quan về dự án. **Nếu bạn quan tâm** đến chi tiết kỹ thuật, hướng dẫn cài đặt/triển khai, hay muốn dùng thử — cứ nhắn cho mình nhé:
+This README only provides an overview of the project. **If you are interested** in technical details, installation/deployment instructions, or want to try it out — feel free to reach out:
 
 - 📧 **Email:** namtran34311@gmail.com
 
 
 
-## 📄 Giấy phép
+## 📄 License
 
-Phát hành theo giấy phép [MIT](LICENSE).
+Released under the [MIT](LICENSE) license.
 
-<p align="center"><sub>Made with ☕ for small hotels · self-hosted · cloud OCR miễn phí</sub></p>
+<p align="center"><sub>Made with ☕ for small hotels · self-hosted · free cloud OCR</sub></p>

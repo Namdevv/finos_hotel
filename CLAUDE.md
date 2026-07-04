@@ -8,7 +8,7 @@ FinOS Hotel digitizes handwritten hotel ledgers: photograph the book → OCR ext
 
 **Core invariant:** OCR only *pre-fills* a form. It never writes directly to the accounting ledger — handwriting is not trustworthy enough. The pipeline returns *suggestions* with per-field confidence; the `transactions` table holds only human-approved data. Preserve this separation when changing the OCR or transaction flow.
 
-The codebase comments, UI, and docs are in Vietnamese. Match that language when editing existing code/comments.
+The codebase comments and UI are mostly in Vietnamese, while the documentation (.md files) is now in English. Match that language when editing existing code/comments/docs.
 
 ## Commands
 
